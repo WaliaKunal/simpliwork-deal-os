@@ -1,14 +1,14 @@
 'use client';
 
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getAuth, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 /**
- * CORE FIREBASE INITIALIZATION
+ * STRATEGIC FIREBASE INITIALIZATION
  * 
- * This file is the SOLE source of truth for Firebase initialization.
- * The configuration is embedded directly to prevent module loading issues.
+ * To solve the 'api-key-not-valid' error in Next.js, we embed the config 
+ * directly here to avoid module resolution race conditions.
  */
 
 const firebaseConfig = {
@@ -20,18 +20,26 @@ const firebaseConfig = {
   appId: "1:349880846443:web:5d61afe90eccede738092e"
 };
 
-if (typeof window !== 'undefined') {
-  console.log("Simpliwork OS: Initializing Firebase with API Key:", firebaseConfig.apiKey);
+// Singleton instances
+let app: FirebaseApp;
+let auth: Auth;
+let firestore: Firestore;
+
+if (getApps().length === 0) {
+  if (typeof window !== 'undefined') {
+    console.log("Simpliwork OS: Initializing Firebase Production Services...");
+    console.log("Config Check: API Key starts with", firebaseConfig.apiKey.substring(0, 10));
+  }
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
 }
 
-// Initialize exactly once using the singleton pattern
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const firestore = getFirestore(app);
+auth = getAuth(app);
+firestore = getFirestore(app);
 
 /**
- * Returns the initialized services. 
- * This is used by the ClientProvider to seed the React context.
+ * Returns the initialized services.
  */
 export function initializeFirebase() {
   return {

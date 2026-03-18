@@ -27,7 +27,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Standard auth state listener
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         if (!firebaseUser.email?.endsWith('@simpliwork.com')) {
@@ -46,7 +45,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               full_name: firebaseUser.displayName || foundUser.full_name,
             });
           } else {
-            // User has the domain but isn't in our internal directory
             signOut(auth);
             setUser(null);
             toast({
@@ -70,18 +68,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     provider.setCustomParameters({ prompt: 'select_account' });
 
     try {
-      console.log("Attempting Google Sign-In with popup...");
+      console.log("Auth Flow Initiated: signInWithPopup");
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      // LOG THE FULL ERROR OBJECT FOR DIAGNOSTICS
-      console.error("Login Failure - Full Error Object:", error);
-      
-      const errorCode = error.code || "unknown-error";
-      const errorMessage = error.message || "An unexpected error occurred during sign-in.";
+      // LOG FULL DIAGNOSTICS FOR DEBUGGING
+      console.error("Firebase Login Failure:", {
+        code: error.code,
+        message: error.message,
+        details: error.customData,
+        full: error
+      });
       
       toast({
         title: "Sign-In Failed",
-        description: `Firebase Error [${errorCode}]: ${errorMessage}`,
+        description: `Error [${error.code || 'unknown'}]: ${error.message || 'Verification failed.'}`,
         variant: "destructive"
       });
     }

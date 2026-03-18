@@ -1,6 +1,5 @@
 import { Building, User, Deal } from './types';
 
-// Helper to get a date X days ago
 const daysAgo = (days: number) => {
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -30,13 +29,16 @@ export const MOCK_DEALS: Deal[] = [
     sales_owner_email: 'sameer@simpliwork.com',
     stage: 'Qualified',
     stage_updated_date: daysAgo(4),
-    requirement_summary: '50-seater managed office space',
+    requirement_summary: '50-seater managed office space for a US-based SaaS company.',
     approx_requirement_size: 5000,
     source_type: 'Broker',
     source_name: 'CBRE',
     created_date: daysAgo(12),
     last_activity_date: daysAgo(2),
-    latest_activity_note: 'Client shared detailed headcount growth plan.',
+    activity_logs: [
+      { user_email: 'sameer@simpliwork.com', timestamp: daysAgo(10), note: 'Initial call done.' },
+      { user_email: 'sameer@simpliwork.com', timestamp: daysAgo(2), note: 'Client shared detailed headcount growth plan.' }
+    ],
     budget_clarity: true,
     timeline_clarity: false,
     decision_maker_identified: true,
@@ -49,13 +51,15 @@ export const MOCK_DEALS: Deal[] = [
     sales_owner_email: 'vikram@simpliwork.com',
     stage: 'Solutioning',
     stage_updated_date: daysAgo(8),
-    requirement_summary: 'Full floor requirement for engineering team',
+    requirement_summary: 'Full floor requirement for engineering team, needs 20 cabins.',
     approx_requirement_size: 15000,
     source_type: 'Direct',
     source_name: 'Website',
     created_date: daysAgo(25),
     last_activity_date: daysAgo(8),
-    latest_activity_note: 'Waiting for design team to revert on layout.',
+    activity_logs: [
+      { user_email: 'vikram@simpliwork.com', timestamp: daysAgo(8), note: 'Waiting for design team to revert on layout.' }
+    ],
     budget_clarity: true,
     timeline_clarity: true,
     decision_maker_identified: true,
@@ -69,13 +73,15 @@ export const MOCK_DEALS: Deal[] = [
     sales_owner_email: 'sameer@simpliwork.com',
     stage: 'Proposal Sent',
     stage_updated_date: daysAgo(15),
-    requirement_summary: '200 desks requirement',
+    requirement_summary: '200 desks requirement across two buildings.',
     approx_requirement_size: 20000,
     source_type: 'Broker',
     source_name: 'JLL',
     created_date: daysAgo(40),
     last_activity_date: daysAgo(1),
-    latest_activity_note: 'Followed up on proposal. They are comparing with competitors.',
+    activity_logs: [
+      { user_email: 'sameer@simpliwork.com', timestamp: daysAgo(1), note: 'Followed up on proposal. They are comparing with competitors.' }
+    ],
     budget_clarity: true,
     timeline_clarity: true,
     decision_maker_identified: true,

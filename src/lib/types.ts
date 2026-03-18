@@ -9,6 +9,12 @@ export type DealStage =
   | 'LoI Signed' 
   | 'Lost';
 
+export interface ActivityLog {
+  user_email: string;
+  timestamp: string;
+  note: string;
+}
+
 export interface Building {
   building_id: string;
   building_name: string;
@@ -38,7 +44,7 @@ export interface Deal {
   source_name: string;
   created_date: string;
   last_activity_date: string;
-  latest_activity_note?: string;
+  activity_logs: ActivityLog[];
   budget_clarity: boolean;
   timeline_clarity: boolean;
   decision_maker_identified: boolean;

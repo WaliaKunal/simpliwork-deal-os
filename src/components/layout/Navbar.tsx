@@ -35,19 +35,19 @@ export default function Navbar() {
       icon: Paintbrush 
     },
     { 
-      label: 'Management', 
+      label: 'Intelligence', 
       href: '/management', 
       roles: ['Management', 'Admin'], 
       icon: LayoutDashboard 
     },
     { 
-      label: 'Buildings', 
+      label: 'Assets', 
       href: '/admin/buildings', 
       roles: ['Admin'], 
       icon: Building2 
     },
     { 
-      label: 'Users', 
+      label: 'Access', 
       href: '/admin/users', 
       roles: ['Admin'], 
       icon: Users 
@@ -60,10 +60,10 @@ export default function Navbar() {
     <nav className="h-16 border-b bg-white flex items-center justify-between px-6 sticky top-0 z-50">
       <div className="flex items-center gap-8">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-lg">S</span>
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
+            <span className="text-primary-foreground font-black text-lg">S</span>
           </div>
-          <span className="font-bold text-xl tracking-tight text-primary">Simpliwork Deal OS</span>
+          <span className="font-black text-xl tracking-tight text-primary">Simpliwork <span className="text-slate-400 font-bold">OS</span></span>
         </Link>
         
         <div className="hidden md:flex items-center gap-1">
@@ -72,8 +72,8 @@ export default function Navbar() {
               <Button 
                 variant="ghost" 
                 className={cn(
-                  "gap-2 h-10",
-                  pathname.startsWith(item.href) && "bg-secondary text-primary font-semibold"
+                  "gap-2 h-10 px-4 text-xs font-bold uppercase tracking-wider",
+                  pathname.startsWith(item.href) && "bg-slate-100 text-primary"
                 )}
               >
                 <item.icon className="w-4 h-4" />
@@ -87,20 +87,20 @@ export default function Navbar() {
       <div className="flex items-center gap-4">
         {user.role === 'Sales' && (
           <Link href="/sales/create">
-            <Button size="sm" className="gap-2">
+            <Button size="sm" className="gap-2 font-bold px-4">
               <Plus className="w-4 h-4" />
-              New Deal
+              CREATE DEAL
             </Button>
           </Link>
         )}
         
         <div className="flex items-center gap-3 pl-4 border-l">
           <div className="text-right">
-            <p className="text-sm font-semibold leading-none">{user.full_name}</p>
-            <p className="text-xs text-muted-foreground">{user.role}</p>
+            <p className="text-xs font-black leading-none uppercase">{user.full_name}</p>
+            <p className="text-[10px] text-muted-foreground font-bold tracking-widest">{user.role}</p>
           </div>
-          <Button variant="ghost" size="icon" onClick={logout} title="Logout">
-            <LogOut className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+          <Button variant="ghost" size="icon" onClick={logout} title="Logout" className="hover:bg-red-50 hover:text-red-600 rounded-full h-8 w-8">
+            <LogOut className="w-4 h-4 text-muted-foreground" />
           </Button>
         </div>
       </div>

@@ -3,211 +3,262 @@
 import Navbar from '@/components/layout/Navbar';
 import { store } from '@/lib/store';
 import { Deal, STAGES, Building } from '@/lib/types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { 
   TrendingUp, 
   Target, 
   CheckCircle, 
   XCircle, 
-  Filter, 
   BarChart3,
   Building2,
-  Clock
+  Clock,
+  ArrowRight,
+  ShieldAlert,
+  CalendarDays
 } from 'lucide-react';
 import { 
-  ChartContainer, 
-  ChartTooltip, 
-  ChartTooltipContent, 
-  ChartLegend, 
-  ChartLegendContent 
-} from '@/components/ui/chart';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
+} from 'recharts';
+import { cn } from '@/lib/utils';
 
 export default function ManagementDashboard() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
-  const [filters, setFilters] = useState({
-    stage: 'all',
-    building: 'all',
-  });
 
   useEffect(() => {
     setDeals(store.getDeals());
     setBuildings(store.getBuildings());
   }, []);
 
-  const filteredDeals = deals.filter(d => 
-    (filters.stage === 'all' || d.stage === filters.stage) &&
-    (filters.building === 'all' || d.building_id === filters.building)
-  );
+  const calculateDays = (dateStr: string) => {
+    const start = new Date(dateStr);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - start.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
 
-  // Stats calculation
-  const totalValue = filteredDeals.length;
-  const loInitiated = filteredDeals.filter(d => d.stage === 'LoI Initiated').length;
-  const loSigned = filteredDeals.filter(d => d.stage === 'LoI Signed').length;
-  const lostDeals = filteredDeals.filter(d => d.stage === 'Lost').length;
-  
-  // Chart Data: Deals by Stage
-  const stageData = STAGES.map(stage => ({
-    name: stage,
-    value: filteredDeals.filter(d => d.stage === stage).length
-  }));
+  // Pipeline Stats
+  const stats = useMemo(() => {
+    const active = deals.filter(d => d.stage !== 'Lost' && d.stage !== 'LoI Signed');
+    const won = deals.filter(d => d.stage === 'LoI Signed');
+    const lost = deals.filter(d => d.stage === 'Lost');
+    const totalSqft = active.reduce((sum, d) => sum + d.approx_requirement_size, 0);
+    
+    return {
+      activeCount: active.length,
+      wonCount: won.length,
+      lostCount: lost.length,
+      totalSqft: totalSqft.toLocaleString(),
+      winRate: deals.length ? Math.round((won.length / deals.length) * 100) : 0
+    };
+  }, [deals]);
 
-  // Chart Data: Deals by Building
-  const buildingData = buildings.map(b => ({
-    name: b.building_name,
-    count: filteredDeals.filter(d => d.building_id === b.building_id).length
-  })).filter(b => b.count > 0);
+  // Conversion Funnel Data
+  const funnelData = useMemo(() => {
+    return [
+      { name: 'Qualified', count: deals.filter(d => d.stage !== 'Lost').length },
+      { name: 'Proposal', count: deals.filter(d => ['Proposal Sent', 'Negotiation', 'LoI Initiated', 'LoI Signed'].includes(d.stage)).length },
+      { name: 'LoI Signed', count: deals.filter(d => d.stage === 'LoI Signed').length }
+    ];
+  }, [deals]);
 
-  const COLORS = ['#2259C3', '#85D3E0', '#4CAF50', '#FF9800', '#F44336', '#9C27B0', '#795548'];
+  // Aging Risks
+  const risks = useMemo(() => {
+    return deals.filter(d => {
+      const daysSinceActivity = calculateDays(d.last_activity_date);
+      const daysInStage = calculateDays(d.stage_updated_date);
+      return (
+        (d.stage !== 'Lost' && d.stage !== 'LoI Signed' && daysSinceActivity > 7) ||
+        (d.stage === 'Solutioning' && daysInStage > 10) ||
+        (d.stage === 'Negotiation' && daysInStage > 14)
+      );
+    });
+  }, [deals]);
+
+  // Broker Performance
+  const brokerData = useMemo(() => {
+    const brokers: Record<string, { total: number; won: number }> = {};
+    deals.forEach(d => {
+      const name = d.source_name;
+      if (!brokers[name]) brokers[name] = { total: 0, won: 0 };
+      brokers[name].total += 1;
+      if (d.stage === 'LoI Signed') brokers[name].won += 1;
+    });
+    return Object.entries(brokers).map(([name, data]) => ({
+      name,
+      total: data.total,
+      winRate: Math.round((data.won / data.total) * 100)
+    })).sort((a, b) => b.total - a.total);
+  }, [deals]);
+
+  // Cohort Analysis
+  const cohortData = useMemo(() => {
+    const cohorts: Record<string, { total: number; won: number; lost: number }> = {};
+    deals.forEach(d => {
+      const month = d.created_date.substring(0, 7); // YYYY-MM
+      if (!cohorts[month]) cohorts[month] = { total: 0, won: 0, lost: 0 };
+      cohorts[month].total += 1;
+      if (d.stage === 'LoI Signed') cohorts[month].won += 1;
+      if (d.stage === 'Lost') cohorts[month].lost += 1;
+    });
+    return Object.entries(cohorts).map(([month, data]) => ({
+      month,
+      total: data.total,
+      won: data.won,
+      lost: data.lost,
+      inPipeline: data.total - data.won - data.lost
+    })).sort((a, b) => b.month.localeCompare(a.month));
+  }, [deals]);
+
+  const COLORS = ['#2259C3', '#85D3E0', '#4CAF50', '#F44336'];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F0F2F5]">
+    <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
       <Navbar />
       <main className="flex-1 p-8 max-w-7xl mx-auto w-full space-y-8">
-        <header className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Management Overview</h1>
-            <p className="text-muted-foreground">Real-time pipeline performance and asset-linked insights.</p>
-          </div>
-          <div className="flex gap-4">
-            <Select onValueChange={(val) => setFilters({...filters, stage: val})}>
-              <SelectTrigger className="w-40 bg-white">
-                <SelectValue placeholder="All Stages" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Stages</SelectItem>
-                {STAGES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select onValueChange={(val) => setFilters({...filters, building: val})}>
-              <SelectTrigger className="w-40 bg-white">
-                <SelectValue placeholder="All Buildings" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Buildings</SelectItem>
-                {buildings.map(b => <SelectItem key={b.building_id} value={b.building_id}>{b.building_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+        <header>
+          <h1 className="text-3xl font-bold text-slate-900">Decision Intelligence</h1>
+          <p className="text-slate-500 mt-1">Strategic view of pipeline integrity, conversion rates, and aging risks.</p>
         </header>
 
-        {/* Top KPIs */}
+        {/* Intelligence KPIs */}
         <div className="grid grid-cols-4 gap-6">
-          <KPI icon={TrendingUp} label="Active Pipeline" value={filteredDeals.filter(d => d.stage !== 'Lost' && d.stage !== 'LoI Signed').length} color="text-primary" />
-          <KPI icon={Target} label="LoI Initiated" value={loInitiated} color="text-orange-500" />
-          <KPI icon={CheckCircle} label="LoI Signed" value={loSigned} color="text-green-600" />
-          <KPI icon={XCircle} label="Total Lost" value={lostDeals} color="text-destructive" />
+          <KPI icon={TrendingUp} label="Total Pipeline" value={stats.activeCount} subValue={`${stats.totalSqft} sqft`} color="text-primary" />
+          <KPI icon={Target} label="Win Rate" value={`${stats.winRate}%`} subValue="Historical average" color="text-emerald-600" />
+          <KPI icon={ShieldAlert} label="Aging Risks" value={risks.length} subValue="Deals stalled > 7d" color="text-amber-600" />
+          <KPI icon={XCircle} label="Conversion Failure" value={stats.lostCount} subValue="Total deals lost" color="text-destructive" />
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-2 gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-primary" />
-                Pipeline by Stage
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* Conversion Funnel */}
+          <Card className="border-none shadow-sm ring-1 ring-slate-200">
+            <CardHeader className="pb-2 border-b">
+              <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                <ArrowRight className="w-4 h-4" /> Pipeline Conversion Funnel
               </CardTitle>
             </CardHeader>
-            <CardContent className="h-[300px]">
+            <CardContent className="pt-6 h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stageData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {stageData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend verticalAlign="bottom" height={36}/>
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-primary" />
-                Active Deals by Building
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={buildingData}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip cursor={{fill: 'transparent'}} />
-                  <Bar dataKey="count" fill="#2259C3" radius={[4, 4, 0, 0]} />
+                <BarChart layout="vertical" data={funnelData} margin={{ left: 40, right: 40 }}>
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fontWeight: 'bold' }} />
+                  <Tooltip cursor={{ fill: '#f1f5f9' }} />
+                  <Bar dataKey="count" fill="#2259C3" radius={[0, 4, 4, 0]} label={{ position: 'right', fontSize: 12 }} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        </div>
 
-        {/* Detailed Data View */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Detailed Pipeline View</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Building</TableHead>
-                  <TableHead>Stage</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Last Activity</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDeals.map(deal => (
-                  <TableRow key={deal.deal_id}>
-                    <TableCell className="font-semibold">{deal.company_name}</TableCell>
-                    <TableCell>{buildings.find(b => b.building_id === deal.building_id)?.building_name}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="bg-primary/10 text-primary border-none">{deal.stage}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{deal.sales_owner_email}</TableCell>
-                    <TableCell>{deal.approx_requirement_size.toLocaleString()} sqft</TableCell>
-                    <TableCell className="text-muted-foreground flex items-center gap-2">
-                      <Clock className="w-3 h-3" /> {deal.last_activity_date}
-                    </TableCell>
+          {/* Aging Risk Registry */}
+          <Card className="border-none shadow-sm ring-1 ring-slate-200">
+            <CardHeader className="pb-2 border-b">
+              <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4" /> Critical Risk Registry
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-slate-50">
+                  <TableRow>
+                    <TableHead className="text-[10px] font-bold">Company</TableHead>
+                    <TableHead className="text-[10px] font-bold">Stage</TableHead>
+                    <TableHead className="text-[10px] font-bold">Idle</TableHead>
+                    <TableHead className="text-right text-[10px] font-bold">Risk Level</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {risks.slice(0, 5).map(r => {
+                    const idleDays = calculateDays(r.last_activity_date);
+                    return (
+                      <TableRow key={r.deal_id}>
+                        <TableCell className="font-semibold text-xs">{r.company_name}</TableCell>
+                        <TableCell className="text-xs">{r.stage}</TableCell>
+                        <TableCell className="text-xs text-slate-500">{idleDays}d</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="outline" className={cn(
+                            "text-[9px] font-bold",
+                            idleDays > 14 ? "bg-red-50 text-red-600 border-red-200" : "bg-amber-50 text-amber-600 border-amber-200"
+                          )}>
+                            {idleDays > 14 ? 'HIGH' : 'MEDIUM'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {risks.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-20 text-center text-xs text-slate-400 italic">No high-risk deals detected.</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Time Cohort Analysis */}
+          <Card className="border-none shadow-sm ring-1 ring-slate-200 lg:col-span-2">
+            <CardHeader className="pb-2 border-b">
+              <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                <CalendarDays className="w-4 h-4" /> Time Cohort Analysis (Creation Month)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-slate-50">
+                  <TableRow>
+                    <TableHead className="font-bold">Month</TableHead>
+                    <TableHead className="font-bold">Total Deals</TableHead>
+                    <TableHead className="font-bold">Closed (Won) %</TableHead>
+                    <TableHead className="font-bold">Lost %</TableHead>
+                    <TableHead className="text-right font-bold">In Pipeline</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cohortData.map(c => (
+                    <TableRow key={c.month}>
+                      <TableCell className="font-bold">{new Date(c.month + '-01').toLocaleString('default', { month: 'short', year: 'numeric' })}</TableCell>
+                      <TableCell>{c.total}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500" style={{ width: `${(c.won / c.total) * 100}%` }} />
+                          </div>
+                          <span className="text-xs font-bold">{Math.round((c.won / c.total) * 100)}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs font-bold text-red-500">{Math.round((c.lost / c.total) * 100)}%</span>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-primary">{c.inPipeline}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
       </main>
     </div>
   );
 }
 
-function KPI({ icon: Icon, label, value, color }: any) {
+function KPI({ icon: Icon, label, value, subValue, color }: any) {
   return (
-    <Card className="shadow-sm">
+    <Card className="shadow-sm border-none ring-1 ring-slate-200">
       <CardContent className="pt-6 flex items-center gap-4">
-        <div className={`p-3 rounded-full bg-muted/50 ${color}`}>
+        <div className={cn("p-3 rounded-xl bg-slate-50", color)}>
           <Icon className="w-6 h-6" />
         </div>
         <div>
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <p className="text-3xl font-bold">{value}</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-1">{label}</p>
+          <div className="flex flex-col">
+            <span className="text-2xl font-bold text-slate-900">{value}</span>
+            <span className="text-[10px] text-slate-500 font-medium">{subValue}</span>
+          </div>
         </div>
       </CardContent>
     </Card>

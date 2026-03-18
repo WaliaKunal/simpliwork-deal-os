@@ -3,7 +3,7 @@
 import Navbar from '@/components/layout/Navbar';
 import { useAuth } from '@/context/AuthContext';
 import { store } from '@/lib/store';
-import { Deal, STAGES, DealStage } from '@/lib/types';
+import { Deal, STAGES, DealStage, ActivityLog } from '@/lib/types';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -23,9 +23,10 @@ import {
   Briefcase,
   History,
   Target,
-  Clock,
-  AlertCircle,
-  MessageSquarePlus
+  MessageSquarePlus,
+  FileText,
+  User as UserIcon,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -47,8 +48,11 @@ export default function DealDetail() {
   if (loading || !deal) return null;
 
   const building = store.getBuilding(deal.building_id);
-  const canEditSales = user?.role === 'Sales' && deal.sales_owner_email === user.email;
-  const canEditDesign = user?.role === 'Design' && deal.stage === 'Solutioning';
+  const isSalesOwner = user?.role === 'Sales' && deal.sales_owner_email === user.email;
+  const isDesign = user?.role === 'Design';
+  const isManagement = user?.role === 'Management' || user?.role === 'Admin';
+
+  const canEdit = isSalesOwner || isDesign || user?.role === 'Admin';
 
   const updateField = (field: keyof Deal, value: any) => {
     const updated = { ...deal, [field]: value };
@@ -57,34 +61,43 @@ export default function DealDetail() {
   };
 
   const handleAddNote = () => {
-    if (!newNote.trim()) return;
-    const today = new Date().toISOString().split('T')[0];
-    updateField('latest_activity_note', newNote);
-    updateField('last_activity_date', today);
+    if (!newNote.trim() || !user) return;
+    const log: ActivityLog = {
+      user_email: user.email,
+      timestamp: new Date().toISOString().split('T')[0],
+      note: newNote
+    };
+    const updated = store.addActivityLog(deal.deal_id, log);
+    if (updated) setDeal({ ...updated });
     setNewNote('');
-    toast({ title: "Activity Logged", description: "Latest note and activity date updated." });
-  };
-
-  const handleRequestLayout = () => {
-    const today = new Date().toISOString().split('T')[0];
-    updateField('layout_requested_date', today);
-    toast({ title: "Layout Requested", description: "Design team has been notified." });
+    toast({ title: "Activity Logged", description: "Activity history updated." });
   };
 
   const validateStageChange = (newStage: DealStage): string | null => {
+    if (newStage === 'Solutioning') {
+      if (!deal.requirement_summary || deal.requirement_summary.trim().length < 5) {
+        return "Qualified → Solutioning requires a detailed Requirement Summary.";
+      }
+    }
     if (newStage === 'Proposal Sent') {
       if (!deal.layout_uploaded_date && !deal.layout_file_upload) {
-        return "Validation Error: A layout must be uploaded before moving to Proposal Sent.";
+        return "Solutioning → Proposal Sent requires a layout to be uploaded by Design.";
+      }
+    }
+    if (newStage === 'Negotiation') {
+      const logsAfterProposal = deal.activity_logs.filter(l => l.timestamp >= deal.stage_updated_date);
+      if (logsAfterProposal.length === 0) {
+        return "Proposal Sent → Negotiation requires at least one activity log after the proposal date.";
       }
     }
     if (newStage === 'LoI Signed') {
       if (!deal.loi_signed_date) {
-        return "Validation Error: LoI Signed Date is required.";
+        return "LoI Signed stage requires the LoI Signed Date to be populated.";
       }
     }
     if (newStage === 'Lost') {
-      if (!deal.lost_reason || deal.lost_reason.trim().length < 5) {
-        return "Action Required: Please provide a detailed 'Lost Reason' in Section 4.";
+      if (!deal.lost_reason || deal.lost_reason.trim().length < 10) {
+        return "Marking Lost requires a detailed reason (min 10 characters).";
       }
     }
     return null;
@@ -93,27 +106,47 @@ export default function DealDetail() {
   const handleStageChange = (newStage: DealStage) => {
     const error = validateStageChange(newStage);
     if (error) {
-      toast({ title: "Step Blocked", description: error, variant: "destructive" });
+      toast({ title: "Enforcement Error", description: error, variant: "destructive" });
       return;
     }
     updateField('stage', newStage);
-    toast({ title: "Stage Updated", description: `Deal is now in ${newStage}.` });
+    toast({ title: "Stage Updated", description: `Deal advanced to ${newStage}.` });
+  };
+
+  const handleRequestLayout = () => {
+    const today = new Date().toISOString().split('T')[0];
+    updateField('layout_requested_date', today);
+    toast({ title: "Layout Requested", description: "Design team has been notified." });
+  };
+
+  const handleUploadLayout = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const filename = `layout_${deal.company_name.toLowerCase().replace(/\s/g, '_')}_v${deal.layout_revision_count + 1}.pdf`;
+    const updates: Partial<Deal> = {
+      layout_uploaded_date: today,
+      layout_file_upload: filename,
+      layout_revision_count: deal.layout_revision_count + 1
+    };
+    const updated = store.updateDeal(deal.deal_id, updates);
+    if (updated) setDeal({ ...updated });
+    toast({ title: "Layout Uploaded", description: `Uploaded ${filename}` });
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F0F2F5]">
       <Navbar />
       <main className="flex-1 p-8 max-w-7xl mx-auto w-full space-y-8 pb-20">
-        {/* Header Actions */}
+        
+        {/* Top Intelligence Header */}
         <div className="flex items-center justify-between bg-white p-6 rounded-lg shadow-sm border border-slate-200">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full hover:bg-slate-100">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
               <ChevronLeft />
             </Button>
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-bold text-slate-900">{deal.company_name}</h1>
-                <Badge className="px-3 py-1 bg-primary/10 text-primary border-none text-xs font-bold uppercase tracking-wider">
+                <Badge className="bg-primary/10 text-primary border-none text-xs font-bold uppercase">
                   {deal.stage}
                 </Badge>
               </div>
@@ -124,10 +157,10 @@ export default function DealDetail() {
           </div>
           
           <div className="flex items-center gap-4">
-            {canEditSales && (
+            {!isManagement && isSalesOwner && (
               <Select value={deal.stage} onValueChange={(val) => handleStageChange(val as DealStage)}>
-                <SelectTrigger className="w-52 bg-primary text-primary-foreground font-bold hover:bg-primary/90 border-none">
-                  <SelectValue placeholder="Move Stage" />
+                <SelectTrigger className="w-52 bg-primary text-primary-foreground font-bold border-none h-11">
+                  <SelectValue placeholder="Advance Stage" />
                 </SelectTrigger>
                 <SelectContent>
                   {STAGES.map(s => (
@@ -142,9 +175,9 @@ export default function DealDetail() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
           {/* Section 1: Summary */}
-          <Card className="border-none shadow-sm h-fit ring-1 ring-slate-200">
-            <CardHeader className="bg-slate-50/80 border-b py-4">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-600 uppercase tracking-wide">
+          <Card className="border-none shadow-sm ring-1 ring-slate-200">
+            <CardHeader className="bg-slate-50 border-b py-4">
+              <CardTitle className="text-xs font-bold flex items-center gap-2 text-slate-600 uppercase tracking-widest">
                 <Briefcase className="w-4 h-4 text-primary" />
                 Section 1: Deal Summary
               </CardTitle>
@@ -152,36 +185,48 @@ export default function DealDetail() {
             <CardContent className="pt-6 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-[10px] uppercase text-muted-foreground font-bold">Owner</Label>
-                  <div className="text-sm font-semibold p-2 bg-slate-50 rounded border border-slate-100">{deal.sales_owner_email}</div>
+                  <Label className="text-[10px] uppercase text-muted-foreground font-bold">Sales Owner</Label>
+                  <div className="text-sm font-semibold p-2 bg-slate-50 rounded border flex items-center gap-2">
+                    <UserIcon className="w-3 h-3" /> {deal.sales_owner_email}
+                  </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] uppercase text-muted-foreground font-bold">Source</Label>
-                  <div className="text-sm font-semibold p-2 bg-slate-50 rounded border border-slate-100">{deal.source_type}: {deal.source_name}</div>
+                  <Label className="text-[10px] uppercase text-muted-foreground font-bold">Source Detail</Label>
+                  <div className="text-sm font-semibold p-2 bg-slate-50 rounded border">{deal.source_type}: {deal.source_name}</div>
                 </div>
               </div>
               
-              <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="space-y-3 pt-2 border-t border-slate-100">
                 <Label className="text-[10px] uppercase text-muted-foreground font-bold flex items-center gap-2">
-                  <History className="w-3 h-3" /> Latest Activity Log
+                  <History className="w-3 h-3" /> Activity Intelligence Log
                 </Label>
-                <div className="space-y-3">
-                  <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100 italic text-sm text-blue-900">
-                    {deal.latest_activity_note || "No notes logged yet."}
-                    <div className="text-[10px] mt-2 font-bold text-blue-600 not-italic uppercase">As on {deal.last_activity_date}</div>
-                  </div>
-                  {canEditSales && (
-                    <div className="flex gap-2">
+                <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2">
+                  {isSalesOwner && (
+                    <div className="flex gap-2 sticky top-0 bg-white pb-2">
                       <Input 
-                        placeholder="Add quick update..." 
+                        placeholder="Add intelligence note..." 
                         value={newNote}
                         onChange={(e) => setNewNote(e.target.value)}
-                        className="h-9 text-xs"
+                        className="text-xs h-9"
                       />
-                      <Button size="sm" onClick={handleAddNote} disabled={!newNote.trim()} className="gap-1 h-9 font-bold px-3">
+                      <Button size="sm" onClick={handleAddNote} disabled={!newNote.trim()} className="gap-1 h-9 px-4">
                         <MessageSquarePlus className="w-3 h-3" /> LOG
                       </Button>
                     </div>
+                  )}
+                  {deal.activity_logs.length > 0 ? (
+                    deal.activity_logs.map((log, i) => (
+                      <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
+                        <p className="text-sm text-slate-700 leading-relaxed italic">"{log.note}"</p>
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase">
+                          <span>{log.user_email}</span>
+                          <span>•</span>
+                          <span>{log.timestamp}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No activity logs recorded yet.</p>
                   )}
                 </div>
               </div>
@@ -189,70 +234,74 @@ export default function DealDetail() {
           </Card>
 
           {/* Section 2: Qualification */}
-          <Card className="border-none shadow-sm h-fit ring-1 ring-slate-200">
-            <CardHeader className="bg-slate-50/80 border-b py-4">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-600 uppercase tracking-wide">
+          <Card className="border-none shadow-sm ring-1 ring-slate-200">
+            <CardHeader className="bg-slate-50 border-b py-4">
+              <CardTitle className="text-xs font-bold flex items-center gap-2 text-slate-600 uppercase tracking-widest">
                 <Target className="w-4 h-4 text-primary" />
-                Section 2: Qualification & Requirement
+                Section 2: Qualification Gate
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase text-muted-foreground font-bold">Requirement Summary *</Label>
+                <Label className="text-[10px] uppercase text-muted-foreground font-bold flex items-center justify-between">
+                  <span>Requirement Summary *</span>
+                  {(!deal.requirement_summary || deal.requirement_summary.length < 5) && <Badge variant="destructive" className="h-4 text-[9px]">ENFORCED</Badge>}
+                </Label>
                 <Textarea 
                   value={deal.requirement_summary}
                   onChange={(e) => updateField('requirement_summary', e.target.value)}
-                  className="min-h-[100px] bg-white text-sm"
-                  readOnly={!canEditSales}
-                  placeholder="Mandatory summary of client needs..."
+                  className="min-h-[100px] text-sm"
+                  readOnly={!isSalesOwner}
+                  placeholder="Summarize desks, budget, cabins, and amenities required..."
                 />
               </div>
               <div className="grid grid-cols-3 gap-3">
-                {['Budget Clarity', 'Timeline Clarity', 'DM Identified'].map((label, idx) => {
-                  const fieldMap: Record<string, keyof Deal> = {
-                    'Budget Clarity': 'budget_clarity',
-                    'Timeline Clarity': 'timeline_clarity',
-                    'DM Identified': 'decision_maker_identified'
-                  };
-                  const field = fieldMap[label];
-                  return (
-                    <div key={label} className="flex flex-col items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                      <Label className="text-[9px] uppercase font-bold text-center text-slate-500">{label}</Label>
-                      <Switch 
-                        checked={!!deal[field]} 
-                        onCheckedChange={(val) => updateField(field, val)}
-                        disabled={!canEditSales} 
-                      />
-                    </div>
-                  );
-                })}
+                {[
+                  { label: 'Budget Clarity', field: 'budget_clarity' },
+                  { label: 'Timeline Clarity', field: 'timeline_clarity' },
+                  { label: 'DM Identified', field: 'decision_maker_identified' }
+                ].map((item) => (
+                  <div key={item.label} className="flex flex-col items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <Label className="text-[9px] uppercase font-bold text-slate-500">{item.label}</Label>
+                    <Switch 
+                      checked={!!deal[item.field as keyof Deal]} 
+                      onCheckedChange={(val) => updateField(item.field as keyof Deal, val)}
+                      disabled={!isSalesOwner} 
+                    />
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* Section 3: Solutioning */}
-          <Card className={cn("border-none shadow-sm h-fit ring-1 ring-slate-200", deal.stage === 'Solutioning' && "ring-2 ring-primary")}>
-            <CardHeader className="bg-slate-50/80 border-b py-4">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-600 uppercase tracking-wide">
+          {/* Section 3: Solutioning workflow */}
+          <Card className={cn("border-none shadow-sm ring-1 ring-slate-200", deal.stage === 'Solutioning' && "ring-2 ring-primary")}>
+            <CardHeader className="bg-slate-50 border-b py-4">
+              <CardTitle className="text-xs font-bold flex items-center gap-2 text-slate-600 uppercase tracking-widest">
                 <Paintbrush className="w-4 h-4 text-primary" />
-                Section 3: Design & Solutioning
+                Section 3: Layout Workflow
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
                 <div className="space-y-1">
-                  <div className="text-xs font-bold text-slate-700">LAYOUT STATUS</div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase">Layout Integrity</div>
                   {deal.layout_uploaded_date ? (
-                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 text-[10px] font-bold">READY</Badge>
+                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 text-xs font-bold">READY FOR PROPOSAL</Badge>
                   ) : deal.layout_requested_date ? (
-                    <Badge className="bg-amber-50 text-amber-700 border-amber-200 gap-1 text-[10px] font-bold">PENDING DESIGN</Badge>
+                    <Badge className="bg-amber-50 text-amber-700 border-amber-200 gap-1 text-xs font-bold animate-pulse">PENDING DESIGN REVERT</Badge>
                   ) : (
-                    <Badge variant="outline" className="text-slate-400 text-[10px] font-bold">NOT REQUESTED</Badge>
+                    <Badge variant="outline" className="text-slate-400 text-xs font-bold uppercase">Awaiting Request</Badge>
                   )}
                 </div>
-                {canEditSales && !deal.layout_requested_date && (
-                  <Button size="sm" onClick={handleRequestLayout} className="gap-2 font-bold px-4 h-9">
-                    <Paintbrush className="w-3 h-3" /> Request Layout
+                {isSalesOwner && !deal.layout_requested_date && (
+                  <Button size="sm" onClick={handleRequestLayout} className="gap-2 font-bold px-4 h-10 shadow-sm">
+                    <Paintbrush className="w-4 h-4" /> Request Layout
+                  </Button>
+                )}
+                {isDesign && deal.layout_requested_date && !deal.layout_uploaded_date && (
+                  <Button size="sm" onClick={handleUploadLayout} className="gap-2 font-bold px-4 h-10 shadow-sm bg-emerald-600 hover:bg-emerald-700">
+                    <FileText className="w-4 h-4" /> Upload Layout
                   </Button>
                 )}
               </div>
@@ -261,56 +310,35 @@ export default function DealDetail() {
                 <div className="space-y-4">
                   <div className="space-y-1">
                     <Label className="text-[10px] uppercase text-muted-foreground font-bold">Requested On</Label>
-                    <Input 
-                      type="date" 
-                      value={deal.layout_requested_date || ''} 
-                      readOnly
-                      className="bg-slate-50 text-xs h-9"
-                    />
+                    <Input value={deal.layout_requested_date || 'N/A'} readOnly className="bg-slate-50 text-xs h-9" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px] uppercase text-muted-foreground font-bold">Uploaded On</Label>
-                    <Input 
-                      type="date" 
-                      value={deal.layout_uploaded_date || ''} 
-                      readOnly={!canEditDesign}
-                      onChange={(e) => updateField('layout_uploaded_date', e.target.value)}
-                      className={cn("text-xs h-9", !canEditDesign && "bg-slate-50")}
-                    />
+                    <Input value={deal.layout_uploaded_date || 'N/A'} readOnly className="bg-slate-50 text-xs h-9" />
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <Label className="text-[10px] uppercase text-muted-foreground font-bold">Revisions</Label>
-                    <Input 
-                      type="number" 
-                      value={deal.layout_revision_count} 
-                      readOnly={!canEditDesign}
-                      onChange={(e) => updateField('layout_revision_count', Number(e.target.value))}
-                      className={cn("text-xs h-9", !canEditDesign && "bg-slate-50")}
-                    />
+                    <Label className="text-[10px] uppercase text-muted-foreground font-bold">Total Revisions</Label>
+                    <Input value={deal.layout_revision_count} readOnly className="bg-slate-50 text-xs h-9" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px] uppercase text-muted-foreground font-bold">File Reference</Label>
-                    <Input 
-                      placeholder="Link or Filename" 
-                      value={deal.layout_file_upload || ''} 
-                      readOnly={!canEditDesign}
-                      onChange={(e) => updateField('layout_file_upload', e.target.value)}
-                      className={cn("text-xs h-9", !canEditDesign && "bg-slate-50")}
-                    />
+                    <div className="text-xs font-semibold p-2 bg-slate-50 rounded border truncate">
+                      {deal.layout_file_upload || 'No file yet'}
+                    </div>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Section 4: Closure */}
-          <Card className="border-none shadow-sm h-fit ring-1 ring-slate-200">
-            <CardHeader className="bg-slate-50/80 border-b py-4">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-600 uppercase tracking-wide">
+          {/* Section 4: Commercial & Closure */}
+          <Card className="border-none shadow-sm ring-1 ring-slate-200">
+            <CardHeader className="bg-slate-50 border-b py-4">
+              <CardTitle className="text-xs font-bold flex items-center gap-2 text-slate-600 uppercase tracking-widest">
                 <CheckCircle2 className="w-4 h-4 text-primary" />
-                Section 4: Commercial & Closure
+                Section 4: Closure Enforcement
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 grid grid-cols-2 gap-6">
@@ -320,7 +348,7 @@ export default function DealDetail() {
                   type="date" 
                   value={deal.loi_initiated_date || ''} 
                   onChange={(e) => updateField('loi_initiated_date', e.target.value)}
-                  readOnly={!canEditSales}
+                  readOnly={!isSalesOwner}
                   className="bg-white h-9 text-xs"
                 />
               </div>
@@ -330,32 +358,32 @@ export default function DealDetail() {
                   type="date" 
                   value={deal.loi_signed_date || ''} 
                   onChange={(e) => updateField('loi_signed_date', e.target.value)}
-                  readOnly={!canEditSales}
+                  readOnly={!isSalesOwner}
                   className="bg-white h-9 text-xs"
                 />
               </div>
               <div className="col-span-2 space-y-1 pt-2">
                 <Label className="text-[10px] uppercase text-muted-foreground font-bold flex items-center justify-between">
-                  <span>Lost Reason (Min 5 chars)</span>
-                  {deal.stage === 'Lost' && <Badge variant="destructive" className="h-4 text-[9px] font-bold">MANDATORY</Badge>}
+                  <span>Lost Reason (Min 10 characters for 'Lost' stage)</span>
+                  {deal.stage === 'Lost' && <Badge variant="destructive" className="h-4 text-[9px] font-bold">REQUIRED</Badge>}
                 </Label>
                 <Textarea 
-                  placeholder="Explain why the deal was lost (required to mark Lost)..."
+                  placeholder="Explain conversion failure, competition choice, or pricing stall..."
                   value={deal.lost_reason || ''}
                   onChange={(e) => updateField('lost_reason', e.target.value)}
-                  readOnly={!canEditSales}
-                  className={cn("min-h-[80px] text-sm", deal.stage === 'Lost' && "border-destructive")}
+                  readOnly={!isSalesOwner}
+                  className={cn("min-h-[80px] text-sm", deal.stage === 'Lost' && !deal.lost_reason && "border-destructive")}
                 />
               </div>
               
-              {canEditSales && deal.stage !== 'Lost' && deal.stage !== 'LoI Signed' && (
+              {isSalesOwner && deal.stage !== 'Lost' && deal.stage !== 'LoI Signed' && (
                 <div className="col-span-2 pt-4">
                   <Button 
                     variant="outline" 
-                    className="w-full font-bold h-11 border-destructive text-destructive hover:bg-destructive hover:text-white transition-all"
+                    className="w-full font-bold h-11 border-destructive text-destructive hover:bg-destructive hover:text-white transition-all flex gap-2"
                     onClick={() => handleStageChange('Lost')}
                   >
-                    Mark as Lost
+                    <AlertTriangle className="w-4 h-4" /> Mark as Lost
                   </Button>
                 </div>
               )}

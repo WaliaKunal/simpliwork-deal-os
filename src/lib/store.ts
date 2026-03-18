@@ -1,4 +1,4 @@
-import { Building, User, Deal, DealStage } from './types';
+import { Building, User, Deal, DealStage, ActivityLog } from './types';
 import { MOCK_BUILDINGS, MOCK_USERS, MOCK_DEALS } from './mock-data';
 
 class MockStore {
@@ -17,7 +17,7 @@ class MockStore {
   createDeal(dealData: Partial<Deal>) {
     const today = new Date().toISOString().split('T')[0];
     const newDeal: Deal = {
-      deal_id: `d${this.deals.length + 1}`,
+      deal_id: `d${Date.now()}`,
       created_date: today,
       last_activity_date: today,
       stage_updated_date: today,
@@ -25,6 +25,7 @@ class MockStore {
       budget_clarity: false,
       timeline_clarity: false,
       decision_maker_identified: false,
+      activity_logs: [],
       ...dealData
     } as Deal;
     this.deals.push(newDeal);
@@ -47,6 +48,17 @@ class MockStore {
         ...newUpdate,
         last_activity_date: today
       };
+      return this.deals[index];
+    }
+    return null;
+  }
+
+  addActivityLog(dealId: string, log: ActivityLog) {
+    const index = this.deals.findIndex(d => d.deal_id === dealId);
+    if (index !== -1) {
+      const today = new Date().toISOString().split('T')[0];
+      this.deals[index].activity_logs.unshift(log);
+      this.deals[index].last_activity_date = today;
       return this.deals[index];
     }
     return null;

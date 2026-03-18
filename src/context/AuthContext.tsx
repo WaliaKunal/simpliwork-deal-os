@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             variant: "destructive"
           });
         } else {
-          // Map to local user directory
+          // Map to local user directory (This should be replaced with a Firestore query in production)
           const foundUser = MOCK_USERS.find(u => u.email === firebaseUser.email);
           if (foundUser) {
             setUser({
@@ -68,9 +68,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [auth, toast]);
 
+  /**
+   * login - Triggers the Google Sign-In popup flow.
+   * File: src/context/AuthContext.tsx
+   */
   const login = async () => {
     const provider = new GoogleAuthProvider();
-    // Ensure consistent popup behavior
+    // Forces account selection to prevent silent failures with multiple accounts
     provider.setCustomParameters({
       prompt: 'select_account'
     });
@@ -86,6 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         errorMessage = "Sign-in popup was closed before completion.";
       } else if (error.code === 'auth/cancelled-popup-request') {
         errorMessage = "Sign-in process was cancelled.";
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = "Google sign-in is not enabled in the Firebase Console.";
       }
 
       toast({

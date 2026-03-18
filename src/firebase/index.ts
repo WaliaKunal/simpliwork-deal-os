@@ -7,6 +7,7 @@ import { firebaseConfig } from "./config";
 
 /**
  * Single source of truth for Firebase initialization.
+ * Ensures the app is only initialized once.
  */
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 

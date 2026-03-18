@@ -3,7 +3,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyApDTF72-gR9yhLcBF30Zuj-j4ROFIjL0w",
+  apiKey: "AIzaSyCE0isIvWjvyaw8IPUM6iN55O_Rci2SG-Q",
   authDomain: "simpliwork-deal-os.firebaseapp.com",
   projectId: "simpliwork-deal-os",
   storageBucket: "simpliwork-deal-os.firebasestorage.app",

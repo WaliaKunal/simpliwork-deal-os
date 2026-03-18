@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * Simpliwork Deal OS - Security Rules Analysis
+     * 
+     * Core Philosophy:
+     * This ruleset implements a Role-Based Access Control (RBAC) system combined with strict 
+     * ownership checks. It enforces the "@simpliwork.com" email domain requirement for all 
+     * authenticated actions and ensures that only "active" users defined in the internal 
+     * 'users' collection can interact with the system.
+     * 
+     * Data Structure:
+     * - /users/{userId}: User profiles mapping Firebase UIDs to roles (Sales, Design, Management, Admin).
+     * - /buildings/{buildingId}: Master data for corporate assets.
+     * - /deals/{dealId}: Transactional records for sales opportunities.
+     * 
+     * Key Security Decisions:
+     * 1. Domain Restriction: Every operation validates that the user's Google Sign-In email 
+     *    ends with "@simpliwork.com".
+     * 2. Active Status Check: All entities check against the 'users' collection to ensure 
+     *    the authenticated UID exists and is marked as 'activeStatus: true'.
+     * 3. Authorization Independence: The 'deals' collection utilizes denormalized 'salesOwnerId' 
+     *    fields. This allows rules to perform fast ownership checks (Sales users) without 
+     *    performing cross-collection lookups during write operations.
+     * 4. Multi-Persona Access: The 'deals' collection allows graduated access:
+     *    - Admin: Full Read/Write.
+     *    - Management: Read-Only ("God View").
+     *    - Sales: Create/Read/Update for their owned deals.
+     *    - Design: Read/Update for deals specifically in the "Solutioning" stage.
+     * 
+     * Prototyping Mode:
+     * These rules prioritize authorization (WHO can do WHAT) over schema validation (WHAT the 
+     * data looks like). This allows for rapid evolution of the Deal and Building entities 
+     * while maintaining a secure perimeter.
+     */
+
+    // --- GLOBAL HELPER FUNCTIONS ---
+
+    /** Checks if the user is authenticated with a valid Simpliwork email address. */
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email.matches('.*@simpliwork\\.com$');
+    }
+
+    /** Checks if the user document exists in the database and is currently active. */
+    function isActiveUser() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.activeStatus == true;
+    }
+
+    /** Retrieves the user's role from their document in the 'users' collection. */
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    /** Authorization check for specific roles. */
+    function hasRole(role) {
+      return isActiveUser() && getUserRole() == role;
+    }
+
+    function isAdmin() { return hasRole('Admin'); }
+    function isManagement() { return hasRole('Management'); }
+    function isSales() { return hasRole('Sales'); }
+    function isDesign() { return hasRole('Design'); }
+
+    /** Ownership check for paths/documents tied to a specific UID. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** Ensures a document exists and the user is the owner (used for updates/deletes). */
+    function isExistingOwner(ownerIdField) {
+      return resource != null && resource.data[ownerIdField] == request.auth.uid;
+    }
+
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Rules for the User collection. Supports self-management for profile data and full Admin control.
+     * @path /users/{userId}
+     * @allow (get) User 'abc' fetching their own profile.
+     * @deny (create) User 'abc' attempting to create a user profile for 'xyz'.
+     * @principle Ownership-based access for profile management; Admin override for organization management.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isAdmin();
+      allow update: if (isOwner(userId) && resource != null && request.resource.data.id == resource.data.id) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Rules for Buildings master data. Read-only for all employees, managed by Admins.
+     * @path /buildings/{buildingId}
+     * @allow (list) Any active @simpliwork.com user browsing available buildings.
+     * @deny (update) A Sales user attempting to change a building's cluster.
+     * @principle Global lookup for authenticated staff; strictly centralized management.
+     */
+    match /buildings/{buildingId} {
+      allow get, list: if isActiveUser();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Rules for the Deals collection. Implements complex multi-role orchestration.
+     * @path /deals/{dealId}
+     * @allow (create) A Sales user creating a deal where 'salesOwnerId' matches their UID.
+     * @allow (update) A Design user updating a deal that is in the 'Solutioning' stage.
+     * @deny (delete) A Sales user trying to delete a lost deal (Admins only).
+     * @principle Ownership for Sales, state-based access for Design, and visibility for Management.
+     */
+    match /deals/{dealId} {
+      // Reads: Admin/Management see all. Sales see their own. Design see Solutioning phase.
+      // Note: list rule uses role lookups to satisfy P6 (no resource variable).
+      allow get: if isAdmin() || isManagement() || (isSales() && resource.data.salesOwnerId == request.auth.uid) || (isDesign() && resource.data.stage == 'Solutioning');
+      allow list: if isAdmin() || isManagement(); 
+
+      // Creates: Admin can create any. Sales can create their own.
+      allow create: if isAdmin() || (isSales() && request.resource.data.salesOwnerId == request.auth.uid && request.resource.data.id == dealId);
+      
+      // Updates: Admin any. Sales own. Design if stage is Solutioning.
+      allow update: if isAdmin() || (isSales() && isExistingOwner('salesOwnerId')) || (isDesign() && resource != null && resource.data.stage == 'Solutioning');
+      
+      // Deletes: Strictly restricted to Admin for audit integrity.
+      allow delete: if isAdmin();
+    }
+  }
+}

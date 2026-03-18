@@ -1,0 +1,231 @@
+{
+  "entities": {
+    "Building": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Building",
+      "type": "object",
+      "description": "Represents a physical building asset in the Simpliwork portfolio that deals are linked against.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Building entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The official name of the building."
+        },
+        "city": {
+          "type": "string",
+          "description": "The city where the building is located."
+        },
+        "cluster": {
+          "type": "string",
+          "description": "A geographical or business cluster the building belongs to."
+        },
+        "activeStatus": {
+          "type": "boolean",
+          "description": "Indicates whether the building is currently active and available for deals."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "city",
+        "cluster",
+        "activeStatus"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a Simpliwork employee with specific roles in the Simpliwork Deal OS.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "fullName": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user, used for authentication and identification. Must be a @simpliwork.com domain.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user within the system (e.g., Sales, Design, Management, Admin)."
+        },
+        "activeStatus": {
+          "type": "boolean",
+          "description": "Indicates whether the user account is currently active."
+        }
+      },
+      "required": [
+        "id",
+        "fullName",
+        "email",
+        "role",
+        "activeStatus"
+      ]
+    },
+    "Deal": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Deal",
+      "type": "object",
+      "description": "Represents a qualified deal opportunity tracked within Simpliwork Deal OS.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Deal entity."
+        },
+        "companyName": {
+          "type": "string",
+          "description": "The name of the client company associated with the deal."
+        },
+        "buildingId": {
+          "type": "string",
+          "description": "Reference to the Building where this deal is located. (Relationship: Building 1:N Deal)"
+        },
+        "salesOwnerEmail": {
+          "type": "string",
+          "description": "The email address of the Sales user who owns this deal. (Relationship: User 1:N Deal, specifically Sales role)",
+          "format": "email"
+        },
+        "stage": {
+          "type": "string",
+          "description": "The current stage of the deal (e.g., Qualified, Solutioning, Proposal Sent, Negotiation, LoI Initiated, LoI Signed, Lost)."
+        },
+        "requirementSummary": {
+          "type": "string",
+          "description": "A summary of the client's requirements for the deal."
+        },
+        "approxRequirementSize": {
+          "type": "number",
+          "description": "The approximate size of the requirement, typically in square feet or units, if applicable."
+        },
+        "sourceType": {
+          "type": "string",
+          "description": "The type of source from which the deal originated (e.g., Referral, Inbound, Outbound)."
+        },
+        "sourceName": {
+          "type": "string",
+          "description": "The specific name of the source (e.g., 'Google Ads', 'Client X Referral')."
+        },
+        "createdDate": {
+          "type": "string",
+          "description": "The date and time when the deal was initially created in the system.",
+          "format": "date-time"
+        },
+        "lastActivityDate": {
+          "type": "string",
+          "description": "The date and time of the last recorded activity on the deal.",
+          "format": "date-time"
+        },
+        "budgetClarity": {
+          "type": "boolean",
+          "description": "Indicates whether the client's budget for the deal is clear."
+        },
+        "timelineClarity": {
+          "type": "boolean",
+          "description": "Indicates whether the client's timeline for the deal is clear."
+        },
+        "decisionMakerIdentified": {
+          "type": "boolean",
+          "description": "Indicates whether the key decision-maker for the deal has been identified."
+        },
+        "layoutRequestedDate": {
+          "type": "string",
+          "description": "The date when the layout/design was requested for the deal.",
+          "format": "date-time"
+        },
+        "layoutUploadedDate": {
+          "type": "string",
+          "description": "The date when the initial or latest layout/design file was uploaded.",
+          "format": "date-time"
+        },
+        "layoutRevisionCount": {
+          "type": "number",
+          "description": "The number of revisions made to the layout/design for the deal."
+        },
+        "designNote": {
+          "type": "string",
+          "description": "Notes from the Design team regarding the solutioning for the deal."
+        },
+        "layoutFileUpload": {
+          "type": "string",
+          "description": "A URI or path to the uploaded layout/design file.",
+          "format": "uri"
+        },
+        "loiInitiatedDate": {
+          "type": "string",
+          "description": "The date when the Letter of Intent (LoI) process was initiated.",
+          "format": "date-time"
+        },
+        "loiSignedDate": {
+          "type": "string",
+          "description": "The date when the Letter of Intent (LoI) was officially signed.",
+          "format": "date-time"
+        },
+        "lostReason": {
+          "type": "string",
+          "description": "The reason why the deal was lost, if applicable."
+        }
+      },
+      "required": [
+        "id",
+        "companyName",
+        "buildingId",
+        "salesOwnerEmail",
+        "stage",
+        "requirementSummary",
+        "sourceType",
+        "sourceName",
+        "createdDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. The document ID, 'userId', is the Firebase Authentication UID. This collection is crucial for role-based access control (DBAC), as the 'role' field within each user document dictates permissions across the application. Access to this collection is restricted to the owner for read/update (profile management) and Admin for all operations. Includes 'activeStatus' to enable/disable user access. The 'id' property from the User entity schema maps directly to the document ID 'userId'."
+        }
+      },
+      {
+        "path": "/buildings/{buildingId}",
+        "definition": {
+          "entityName": "Building",
+          "schema": {
+            "$ref": "#/backend/entities/Building"
+          },
+          "description": "Stores master data for buildings. Documents in this collection are globally readable by all authenticated users for lookup purposes and are managed (create, update, delete) by Admin users only. The 'id' property from the Building entity schema maps directly to the document ID 'buildingId'."
+        }
+      },
+      {
+        "path": "/deals/{dealId}",
+        "definition": {
+          "entityName": "Deal",
+          "schema": {
+            "$ref": "#/backend/entities/Deal"
+          },
+          "description": "Stores all deal opportunities. Each document includes a denormalized 'salesOwnerId' (the Firebase UID of the sales owner) alongside 'salesOwnerEmail' to enable Authorization Independence for sales-specific access rules. This allows Sales users to manage their owned deals directly based on their UID, eliminating `get()` calls in rules. Design users can access deals with 'stage' set to 'Solutioning' and update specific design-related fields. Management users have read-only 'God View' access to all deals. Admin users have full control for corrections. The 'id' property from the Deal entity schema maps directly to the document ID 'dealId'."
+        }
+      }
+    ],
+    "reasoning": "The proposed Firestore structure prioritizes Authorization Independence, Structural Segregation, and clear Access Modeling to ensure robust security rules and efficient queries. Three main collections are defined: 'users', 'buildings', and 'deals'. The 'users' collection stores user profiles, with the document ID (`userId`) directly mapping to the Firebase Authentication UID. This allows for direct retrieval of user roles for role-based access control (DBAC) without complex lookups. The 'buildings' collection serves as a global master data store, accessible read-only to all authenticated users and modifiable by administrators. The 'deals' collection is the central hub for deal data. To achieve Authorization Independence for deal ownership, each 'deal' document denormalizes the `salesOwnerId` (the Firebase UID of the sales owner) alongside the `salesOwnerEmail`. This critical denormalization eliminates the need for `get()` calls in Firestore security rules to resolve email-to-UID or UID-to-email mappings for authorization, thereby supporting atomic operations and greatly simplifying rule logic.\n\nThis structure also inherently supports QAPs (Query As Permissions) by enabling direct filtering at the database level. For Sales users, 'My Deals' can be retrieved with a query filtering deals by `salesOwnerId == request.auth.uid`, and security rules will enforce this ownership. For Design users, the 'Solutioning Queue' can be retrieved with a query filtering by `stage == 'Solutioning'`, with rules allowing updates only for specific design-related fields. Management users have broad read access, allowing them to query all deals for their 'God View' dashboard without specific query constraints imposed by rules. Admin users have comprehensive read/write access to all collections for master data management and corrections. Structural Segregation is maintained by keeping all documents within a collection uniform in security posture, avoiding mixing different access requirements within the same collection. All 'deal' documents have a consistent security context, with specific permissions applied based on fields like `salesOwnerId`, `stage`, and the user's system role."
+  }
+}

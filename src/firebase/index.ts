@@ -5,20 +5,18 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { firebaseConfig } from "./config";
 
-/**
- * Single source of truth for Firebase initialization.
- * Ensures the app is only initialized once.
- */
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Global initialization check with diagnostic logging
+if (typeof window !== 'undefined') {
+  console.log("Deal OS: Initializing Firebase with API Key (length):", firebaseConfig.apiKey?.length);
+}
 
-/**
- * Singleton instances for Auth and Firestore.
- */
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const authInstance = getAuth(app);
 const firestoreInstance = getFirestore(app);
 
 /**
  * Returns the already initialized App, Auth, and Firestore instances.
+ * This is the single source of truth for Firebase services in the app.
  */
 export function initializeFirebase() {
   return {
@@ -28,7 +26,9 @@ export function initializeFirebase() {
   };
 }
 
-// Re-export other Firebase utilities
+// Named exports for convenience
+export { authInstance as auth, firestoreInstance as firestore, app };
+
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';

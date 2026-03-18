@@ -26,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  // Use the singleton auth instance
   const { auth } = initializeFirebase();
 
   useEffect(() => {
@@ -41,7 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             variant: "destructive"
           });
         } else {
-          // Map to local user directory (This should be replaced with a Firestore query in production)
+          // Map to local user directory
+          // Note: In production, this should fetch from the 'users' Firestore collection
           const foundUser = MOCK_USERS.find(u => u.email === firebaseUser.email);
           if (foundUser) {
             setUser({
@@ -54,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             toast({
               title: "Unauthorized",
-              description: "Email authorized but user not found in Deal OS directory.",
+              description: "Email authorized but user not found in Deal OS directory. Contact admin.",
               variant: "destructive"
             });
           }
@@ -69,33 +71,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [auth, toast]);
 
   /**
-   * login - Triggers the Google Sign-In popup flow.
-   * File: src/context/AuthContext.tsx
+   * login - Triggers the Google Sign-In popup flow with detailed error diagnostics.
    */
   const login = async () => {
     const provider = new GoogleAuthProvider();
-    // Forces account selection to prevent silent failures with multiple accounts
     provider.setCustomParameters({
       prompt: 'select_account'
     });
 
     try {
-      // Standard Firebase popup authentication
+      console.log("Attempting Google Sign-In popup...");
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      // Enhanced diagnostic logging for debugging
-      console.error("Firebase Auth Error Code:", error.code);
-      console.error("Firebase Auth Error Message:", error.message);
-      if (error.customData) {
-        console.error("Firebase Auth Error Custom Data:", error.customData);
-      }
+      // Detailed diagnostic logging for identifying config/domain issues
+      console.group("Firebase Auth Error Diagnostics");
+      console.error("Error Code:", error.code);
+      console.error("Error Message:", error.message);
+      if (error.customData) console.error("Custom Data:", error.customData);
+      console.groupEnd();
       
-      // Temporarily show the exact error code in the UI for debugging
-      const displayError = `Authentication failed. Code: ${error.code || 'unknown'}. ${error.message || ''}`;
+      let errorMessage = "Authentication failed. ";
+      
+      if (error.code === 'auth/api-key-not-valid') {
+        errorMessage += "The Firebase API key is reported as invalid. Please check your Firebase Console settings.";
+      } else if (error.code === 'auth/unauthorized-domain') {
+        errorMessage += "This domain is not authorized in the Firebase Console.";
+      } else {
+        errorMessage += error.message || "An unknown error occurred.";
+      }
 
       toast({
-        title: "Login Error",
-        description: displayError,
+        title: `Login Error: ${error.code}`,
+        description: errorMessage,
         variant: "destructive"
       });
     }

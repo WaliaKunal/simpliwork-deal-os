@@ -83,20 +83,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Standard Firebase popup authentication
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      console.error("Firebase Auth Error:", error);
-      
-      let errorMessage = "Failed to sign in with Google.";
-      if (error.code === 'auth/popup-closed-by-user') {
-        errorMessage = "Sign-in popup was closed before completion.";
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        errorMessage = "Sign-in process was cancelled.";
-      } else if (error.code === 'auth/operation-not-allowed') {
-        errorMessage = "Google sign-in is not enabled in the Firebase Console.";
+      // Enhanced diagnostic logging for debugging
+      console.error("Firebase Auth Error Code:", error.code);
+      console.error("Firebase Auth Error Message:", error.message);
+      if (error.customData) {
+        console.error("Firebase Auth Error Custom Data:", error.customData);
       }
+      
+      // Temporarily show the exact error code in the UI for debugging
+      const displayError = `Authentication failed. Code: ${error.code || 'unknown'}. ${error.message || ''}`;
 
       toast({
         title: "Login Error",
-        description: errorMessage,
+        description: displayError,
         variant: "destructive"
       });
     }

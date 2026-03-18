@@ -1,3 +1,4 @@
+
 "use client";
 
 import Navbar from '@/components/layout/Navbar';
@@ -17,16 +18,28 @@ import { cn } from '@/lib/utils';
 export default function SalesHome() {
   const { user } = useAuth();
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [buildings, setBuildings] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      const allDeals = store.getDeals();
-      setDeals(allDeals.filter(d => d.sales_owner_email === user.email));
-    }
+    const fetchData = async () => {
+      if (user) {
+        setLoading(true);
+        const [allDeals, allBuildings] = await Promise.all([
+          store.getDeals(),
+          store.getBuildings()
+        ]);
+        setDeals(allDeals.filter(d => d.sales_owner_email === user.email));
+        setBuildings(allBuildings);
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, [user]);
 
   const calculateDays = (dateStr: string) => {
+    if (!dateStr) return 0;
     const start = new Date(dateStr);
     const today = new Date();
     const diffTime = Math.abs(today.getTime() - start.getTime());
@@ -47,6 +60,15 @@ export default function SalesHome() {
     });
     return groups;
   }, [filteredDeals]);
+
+  if (loading) return (
+    <div className="min-h-screen flex flex-col bg-[#F0F2F5]">
+      <Navbar />
+      <div className="flex-1 flex items-center justify-center">
+        <p className="font-bold text-slate-400 animate-pulse">Initializing Secure Pipeline...</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F0F2F5]">
@@ -97,9 +119,8 @@ export default function SalesHome() {
                           stageDeals.map(deal => {
                             const daysInStage = calculateDays(deal.stage_updated_date || deal.created_date);
                             const daysSinceActivity = calculateDays(deal.last_activity_date);
-                            const building = store.getBuilding(deal.building_id);
+                            const building = buildings.find(b => b.building_id === deal.building_id);
                             
-                            // Advanced Urgency Signals
                             const isStale = daysSinceActivity > 7;
                             const isSolutioningBottleneck = deal.stage === 'Solutioning' && !deal.layout_uploaded_date && daysInStage > 10;
                             const isNegotiationStall = deal.stage === 'Negotiation' && daysInStage > 14;
@@ -147,7 +168,7 @@ export default function SalesHome() {
                                       <Calendar className="w-3.5 h-3.5" />
                                       {deal.last_activity_date}
                                     </div>
-                                    {deal.activity_logs.length > 0 && (
+                                    {deal.activity_logs && deal.activity_logs.length > 0 && (
                                       <span className="text-[11px] text-slate-500 italic truncate max-w-[180px]">
                                         "{deal.activity_logs[0].note}"
                                       </span>

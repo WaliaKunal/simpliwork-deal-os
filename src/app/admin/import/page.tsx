@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import Navbar from '@/components/layout/Navbar';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
@@ -26,6 +26,19 @@ export default function AdminImport() {
   const [activeTab, setActiveTab] = useState<'buildings' | 'users' | 'deals'>('buildings');
   const [dryRunResult, setDryRunResult] = useState<ImportStatus | null>(null);
   const [fileName, setFileName] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  
+  const [masterBuildings, setMasterBuildings] = useState<Building[]>([]);
+  const [masterUsers, setMasterUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    const fetchMaster = async () => {
+      const [b, u] = await Promise.all([store.getBuildings(), store.getUsers()]);
+      setMasterBuildings(b);
+      setMasterUsers(u);
+    };
+    fetchMaster();
+  }, [activeTab]);
 
   const validateDate = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date);
 
@@ -56,16 +69,13 @@ export default function AdminImport() {
               isRowValid = false;
             }
           } else if (activeTab === 'deals') {
-            const buildings = store.getBuildings();
-            const users = store.getUsers();
-            
             if (!row.company_name || !row.building_id || !row.sales_owner_email || !row.stage) {
               errors.push({ row: rowNum, msg: "Missing mandatory deal fields" });
               isRowValid = false;
-            } else if (!buildings.find(b => b.building_id === row.building_id)) {
+            } else if (!masterBuildings.find(b => b.building_id === row.building_id)) {
               errors.push({ row: rowNum, msg: `Building ID ${row.building_id} not found` });
               isRowValid = false;
-            } else if (!users.find(u => u.email === row.sales_owner_email)) {
+            } else if (!masterUsers.find(u => u.email === row.sales_owner_email)) {
               errors.push({ row: rowNum, msg: `Sales Owner Email ${row.sales_owner_email} not found` });
               isRowValid = false;
             } else if (!STAGES.includes(row.stage as any)) {
@@ -98,53 +108,60 @@ export default function AdminImport() {
     if (file) processCSV(file);
   };
 
-  const commitImport = () => {
+  const commitImport = async () => {
     if (!dryRunResult) return;
+    setIsImporting(true);
 
-    if (activeTab === 'buildings') {
-      const data = dryRunResult.data.map(r => ({
-        building_id: r.building_id,
-        building_name: r.building_name,
-        city: r.city,
-        cluster: r.cluster || 'Other',
-        active_status: r.active_status === 'true' || r.active_status === '1'
-      } as Building));
-      store.setBuildings(data);
-    } else if (activeTab === 'users') {
-      const data = dryRunResult.data.map(r => ({
-        user_id: r.user_id,
-        full_name: r.full_name,
-        email: r.email,
-        role: r.role.toUpperCase(),
-        active_status: r.active_status === 'true' || r.active_status === '1'
-      } as User));
-      store.setUsers(data);
-    } else if (activeTab === 'deals') {
-      const data = dryRunResult.data.map(r => ({
-        deal_id: r.deal_id || `d_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        company_name: r.company_name,
-        building_id: r.building_id,
-        sales_owner_email: r.sales_owner_email,
-        stage: r.stage,
-        stage_updated_date: r.stage_updated_date || new Date().toISOString().split('T')[0],
-        requirement_summary: r.requirement_summary || '',
-        approx_requirement_size: Number(r.approx_requirement_size) || 0,
-        source_type: r.source_type || 'Other',
-        source_name: r.source_name || 'Imported',
-        created_date: r.created_date || new Date().toISOString().split('T')[0],
-        last_activity_date: r.last_activity_date || new Date().toISOString().split('T')[0],
-        activity_logs: [],
-        layout_revision_count: 0,
-        budget_clarity: r.budget_clarity === 'true',
-        timeline_clarity: r.timeline_clarity === 'true',
-        decision_maker_identified: r.decision_maker_identified === 'true'
-      } as Deal));
-      store.setDeals(data);
+    try {
+      if (activeTab === 'buildings') {
+        const data = dryRunResult.data.map(r => ({
+          building_id: r.building_id,
+          building_name: r.building_name,
+          city: r.city,
+          cluster: r.cluster || 'Other',
+          active_status: r.active_status === 'true' || r.active_status === '1'
+        } as Building));
+        await store.setBuildings(data);
+      } else if (activeTab === 'users') {
+        const data = dryRunResult.data.map(r => ({
+          user_id: r.user_id,
+          full_name: r.full_name,
+          email: r.email,
+          role: r.role.toUpperCase(),
+          active_status: r.active_status === 'true' || r.active_status === '1'
+        } as User));
+        await store.setUsers(data);
+      } else if (activeTab === 'deals') {
+        const data = dryRunResult.data.map(r => ({
+          deal_id: r.deal_id || `d_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          company_name: r.company_name,
+          building_id: r.building_id,
+          sales_owner_email: r.sales_owner_email,
+          stage: r.stage,
+          stage_updated_date: r.stage_updated_date || new Date().toISOString().split('T')[0],
+          requirement_summary: r.requirement_summary || '',
+          approx_requirement_size: Number(r.approx_requirement_size) || 0,
+          source_type: r.source_type || 'Other',
+          source_name: r.source_name || 'Imported',
+          created_date: r.created_date || new Date().toISOString().split('T')[0],
+          last_activity_date: r.last_activity_date || new Date().toISOString().split('T')[0],
+          activity_logs: [],
+          layout_revision_count: 0,
+          budget_clarity: r.budget_clarity === 'true',
+          timeline_clarity: r.timeline_clarity === 'true',
+          decision_maker_identified: r.decision_maker_identified === 'true'
+        } as Deal));
+        await store.setDeals(data);
+      }
+
+      toast({ title: "Import Successful", description: `${dryRunResult.valid} records persisted to Firestore.` });
+      setDryRunResult(null);
+      setFileName('');
+    } catch (e: any) {
+      toast({ title: "Import Failed", description: e.message, variant: "destructive" });
+    } finally {
+      setIsImporting(false);
     }
-
-    toast({ title: "Import Successful", description: `${dryRunResult.valid} records updated in local store.` });
-    setDryRunResult(null);
-    setFileName('');
   };
 
   return (
@@ -154,7 +171,7 @@ export default function AdminImport() {
         <header className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">DATA MIGRATION UTILITY</h1>
-            <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest mt-1">Admin Console &bull; Bulk Import Engine</p>
+            <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest mt-1">Admin Console & bull; Bulk Import Engine</p>
           </div>
           <Database className="w-8 h-8 text-primary opacity-20" />
         </header>
@@ -192,16 +209,6 @@ export default function AdminImport() {
               </p>
               <p className="text-[10px] uppercase font-bold text-slate-400 mt-2">Maximum file size: 5MB</p>
             </div>
-            
-            <Alert className="bg-amber-50 border-amber-200 text-amber-800">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              <AlertTitle className="text-xs font-black uppercase">Validation Notice</AlertTitle>
-              <AlertDescription className="text-xs font-medium">
-                {activeTab === 'deals' && "Deals must have valid Building IDs and User Emails already imported."}
-                {activeTab === 'users' && "Roles must be: SALES, DESIGN, MANAGEMENT, or ADMIN."}
-                {activeTab === 'buildings' && "Requires: building_id, building_name, city."}
-              </AlertDescription>
-            </Alert>
           </CardContent>
         </Card>
 
@@ -228,41 +235,15 @@ export default function AdminImport() {
               </Card>
             </div>
 
-            {dryRunResult.errors.length > 0 && (
-              <Card className="border-red-100 overflow-hidden">
-                <CardHeader className="bg-red-50 py-3">
-                  <CardTitle className="text-[10px] font-black uppercase text-red-800 tracking-widest">Error Log</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0 max-h-[300px] overflow-y-auto">
-                  <Table>
-                    <TableHeader className="bg-white">
-                      <TableRow>
-                        <TableHead className="text-[10px] font-black uppercase w-20">Row</TableHead>
-                        <TableHead className="text-[10px] font-black uppercase">Issue</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dryRunResult.errors.map((err, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="font-mono text-xs font-bold">{err.row}</TableCell>
-                          <TableCell className="text-xs text-red-600 font-medium">{err.msg}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
-
             <div className="flex justify-end gap-4">
-              <Button variant="outline" onClick={() => setDryRunResult(null)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setDryRunResult(null)} disabled={isImporting}>Cancel</Button>
               <Button 
-                disabled={dryRunResult.valid === 0} 
+                disabled={dryRunResult.valid === 0 || isImporting} 
                 onClick={commitImport}
                 className="gap-2 font-bold px-8 h-12 bg-primary hover:bg-primary/90"
               >
                 <Database className="w-4 h-4" />
-                Commit {dryRunResult.valid} Records
+                {isImporting ? 'Processing...' : `Commit ${dryRunResult.valid} Records`}
               </Button>
             </div>
           </div>

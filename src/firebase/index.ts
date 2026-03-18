@@ -12,9 +12,8 @@ import { firebaseConfig } from "./config";
  * before any initialization occurs.
  */
 if (typeof window !== 'undefined') {
-  console.log("Deal OS: Initializing Firebase...");
-  console.log("Config Check - API Key:", firebaseConfig.apiKey ? "PRESENT" : "MISSING");
-  console.log("Config Check - Project ID:", firebaseConfig.projectId);
+  console.log("Deal OS: Initializing Firebase with provided config...");
+  console.log("Config Check - API Key (last 4):", firebaseConfig.apiKey.slice(-4));
 }
 
 /**

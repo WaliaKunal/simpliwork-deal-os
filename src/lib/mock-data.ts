@@ -88,5 +88,28 @@ export const MOCK_DEALS: Deal[] = [
     layout_uploaded_date: daysAgo(20),
     layout_file_upload: 'layout_v2_final.pdf',
     layout_revision_count: 2
+  },
+  {
+    deal_id: 'd4',
+    company_name: 'Zenith Labs',
+    building_id: 'b4',
+    sales_owner_email: 'vikram@simpliwork.com',
+    stage: 'LoI Signed',
+    stage_updated_date: daysAgo(5),
+    requirement_summary: 'Specialized lab space and office combo.',
+    approx_requirement_size: 8000,
+    source_type: 'Broker',
+    source_name: 'CBRE',
+    created_date: daysAgo(60),
+    last_activity_date: daysAgo(5),
+    loi_signed_date: daysAgo(5),
+    activity_logs: [
+      { user_email: 'vikram@simpliwork.com', timestamp: daysAgo(5), note: 'LoI signed and deposit received.' }
+    ],
+    budget_clarity: true,
+    timeline_clarity: true,
+    decision_maker_identified: true,
+    layout_uploaded_date: daysAgo(30),
+    layout_revision_count: 1
   }
 ];

@@ -1,15 +1,13 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserRole } from '@/lib/types';
+import { User } from '@/lib/types';
 import { MOCK_USERS } from '@/lib/mock-data';
 import { 
-  getAuth, 
   onAuthStateChanged, 
   signInWithPopup, 
   GoogleAuthProvider, 
-  signOut,
-  User as FirebaseUser
+  signOut
 } from 'firebase/auth';
 import { initializeFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -43,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             variant: "destructive"
           });
         } else {
-          // Map to local user role (for now using mock data as requested not to touch Firestore)
+          // Map to local user directory
           const foundUser = MOCK_USERS.find(u => u.email === firebaseUser.email);
           if (foundUser) {
             setUser({
@@ -72,13 +70,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
+    // Ensure consistent popup behavior
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+
     try {
+      // Standard Firebase popup authentication
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      console.error("Login failed:", error);
+      console.error("Firebase Auth Error:", error);
+      
+      let errorMessage = "Failed to sign in with Google.";
+      if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = "Sign-in popup was closed before completion.";
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        errorMessage = "Sign-in process was cancelled.";
+      }
+
       toast({
         title: "Login Error",
-        description: error.message || "Failed to sign in with Google.",
+        description: errorMessage,
         variant: "destructive"
       });
     }

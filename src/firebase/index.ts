@@ -5,18 +5,13 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { firebaseConfig } from "./config";
 
-// Requirement 7: Log firebaseConfig.apiKey to console before initialization
-console.log("Initializing Firebase with API Key:", firebaseConfig.apiKey);
-
 /**
  * Single source of truth for Firebase initialization.
- * Requirement 4: Ensure initialization is ONLY this pattern.
- * Requirement 5: Ensure no environment variables or alternate configs override this.
  */
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 /**
- * Requirement 6: Ensure getAuth(app) uses this exact app instance.
+ * Singleton instances for Auth and Firestore.
  */
 const authInstance = getAuth(app);
 const firestoreInstance = getFirestore(app);

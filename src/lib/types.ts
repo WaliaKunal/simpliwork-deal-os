@@ -31,12 +31,14 @@ export interface Deal {
   building_id: string;
   sales_owner_email: string;
   stage: DealStage;
+  stage_updated_date: string;
   requirement_summary: string;
   approx_requirement_size: number;
   source_type: string;
   source_name: string;
   created_date: string;
   last_activity_date: string;
+  latest_activity_note?: string;
   budget_clarity: boolean;
   timeline_clarity: boolean;
   decision_maker_identified: boolean;

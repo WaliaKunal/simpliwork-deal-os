@@ -15,10 +15,12 @@ class MockStore {
   getUsers() { return this.users; }
 
   createDeal(dealData: Partial<Deal>) {
+    const today = new Date().toISOString().split('T')[0];
     const newDeal: Deal = {
       deal_id: `d${this.deals.length + 1}`,
-      created_date: new Date().toISOString().split('T')[0],
-      last_activity_date: new Date().toISOString().split('T')[0],
+      created_date: today,
+      last_activity_date: today,
+      stage_updated_date: today,
       layout_revision_count: 0,
       budget_clarity: false,
       timeline_clarity: false,
@@ -32,10 +34,18 @@ class MockStore {
   updateDeal(id: string, updates: Partial<Deal>) {
     const index = this.deals.findIndex(d => d.deal_id === id);
     if (index !== -1) {
+      const today = new Date().toISOString().split('T')[0];
+      const oldStage = this.deals[index].stage;
+      
+      const newUpdate = { ...updates };
+      if (updates.stage && updates.stage !== oldStage) {
+        newUpdate.stage_updated_date = today;
+      }
+      
       this.deals[index] = { 
         ...this.deals[index], 
-        ...updates,
-        last_activity_date: new Date().toISOString().split('T')[0]
+        ...newUpdate,
+        last_activity_date: today
       };
       return this.deals[index];
     }

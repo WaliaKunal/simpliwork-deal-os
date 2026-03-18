@@ -1,5 +1,12 @@
 import { Building, User, Deal } from './types';
 
+// Helper to get a date X days ago
+const daysAgo = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().split('T')[0];
+};
+
 export const MOCK_BUILDINGS: Building[] = [
   { building_id: 'b1', building_name: 'Skyview Hub', city: 'Bangalore', cluster: 'North', active_status: true },
   { building_id: 'b2', building_name: 'Tech Park East', city: 'Pune', cluster: 'East', active_status: true },
@@ -22,12 +29,14 @@ export const MOCK_DEALS: Deal[] = [
     building_id: 'b1',
     sales_owner_email: 'sameer@simpliwork.com',
     stage: 'Qualified',
+    stage_updated_date: daysAgo(4),
     requirement_summary: '50-seater managed office space',
     approx_requirement_size: 5000,
     source_type: 'Broker',
     source_name: 'CBRE',
-    created_date: '2023-10-01',
-    last_activity_date: '2023-10-05',
+    created_date: daysAgo(12),
+    last_activity_date: daysAgo(2),
+    latest_activity_note: 'Client shared detailed headcount growth plan.',
     budget_clarity: true,
     timeline_clarity: false,
     decision_maker_identified: true,
@@ -39,16 +48,18 @@ export const MOCK_DEALS: Deal[] = [
     building_id: 'b2',
     sales_owner_email: 'vikram@simpliwork.com',
     stage: 'Solutioning',
+    stage_updated_date: daysAgo(8),
     requirement_summary: 'Full floor requirement for engineering team',
     approx_requirement_size: 15000,
     source_type: 'Direct',
     source_name: 'Website',
-    created_date: '2023-11-10',
-    last_activity_date: '2023-11-15',
+    created_date: daysAgo(25),
+    last_activity_date: daysAgo(8),
+    latest_activity_note: 'Waiting for design team to revert on layout.',
     budget_clarity: true,
     timeline_clarity: true,
     decision_maker_identified: true,
-    layout_requested_date: '2023-11-12',
+    layout_requested_date: daysAgo(7),
     layout_revision_count: 1
   },
   {
@@ -57,16 +68,19 @@ export const MOCK_DEALS: Deal[] = [
     building_id: 'b3',
     sales_owner_email: 'sameer@simpliwork.com',
     stage: 'Proposal Sent',
+    stage_updated_date: daysAgo(15),
     requirement_summary: '200 desks requirement',
     approx_requirement_size: 20000,
     source_type: 'Broker',
     source_name: 'JLL',
-    created_date: '2023-09-15',
-    last_activity_date: '2023-10-20',
+    created_date: daysAgo(40),
+    last_activity_date: daysAgo(1),
+    latest_activity_note: 'Followed up on proposal. They are comparing with competitors.',
     budget_clarity: true,
     timeline_clarity: true,
     decision_maker_identified: true,
-    layout_uploaded_date: '2023-09-20',
+    layout_uploaded_date: daysAgo(20),
+    layout_file_upload: 'layout_v2_final.pdf',
     layout_revision_count: 2
   }
 ];

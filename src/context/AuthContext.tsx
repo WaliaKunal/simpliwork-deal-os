@@ -9,7 +9,7 @@ import {
   GoogleAuthProvider, 
   signOut
 } from 'firebase/auth';
-import { auth } from '@/firebase/init';
+import { auth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
@@ -68,20 +68,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     provider.setCustomParameters({ prompt: 'select_account' });
 
     try {
-      console.log("Auth Flow Initiated: signInWithPopup");
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      // LOG FULL DIAGNOSTICS FOR DEBUGGING
-      console.error("Firebase Login Failure:", {
-        code: error.code,
-        message: error.message,
-        details: error.customData,
-        full: error
-      });
+      console.error("Login Failure - Details:", error);
       
       toast({
         title: "Sign-In Failed",
-        description: `Error [${error.code || 'unknown'}]: ${error.message || 'Verification failed.'}`,
+        description: `Error: ${error.code || 'unknown'}. Please check your console for details.`,
         variant: "destructive"
       });
     }

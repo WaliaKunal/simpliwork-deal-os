@@ -1,62 +1,56 @@
-
 import { 
   collection, 
   doc, 
   getDocs, 
   getDoc, 
-  addDoc, 
   updateDoc, 
   setDoc, 
-  deleteDoc,
-  query,
-  where,
   writeBatch
 } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { db } from '@/firebase';
 import { Building, User, Deal, ActivityLog } from './types';
 
 class FirestoreStore {
   private getDb() {
-    return initializeFirebase().firestore;
+    return db;
   }
 
   async getDeals(): Promise<Deal[]> {
-    const db = this.getDb();
-    const querySnapshot = await getDocs(collection(db, 'deals'));
+    const database = this.getDb();
+    const querySnapshot = await getDocs(collection(database, 'deals'));
     return querySnapshot.docs.map(doc => ({ ...doc.data() } as Deal));
   }
 
   async getDeal(id: string): Promise<Deal | null> {
-    const db = this.getDb();
-    const docRef = doc(db, 'deals', id);
+    const database = this.getDb();
+    const docRef = doc(database, 'deals', id);
     const docSnap = await getDoc(docRef);
     return docSnap.exists() ? (docSnap.data() as Deal) : null;
   }
   
   async getBuildings(): Promise<Building[]> {
-    const db = this.getDb();
-    const querySnapshot = await getDocs(collection(db, 'buildings'));
+    const database = this.getDb();
+    const querySnapshot = await getDocs(collection(database, 'buildings'));
     return querySnapshot.docs.map(doc => ({ ...doc.data() } as Building));
   }
   
   async getBuilding(id: string): Promise<Building | null> {
-    const db = this.getDb();
-    const docRef = doc(db, 'buildings', id);
+    const database = this.getDb();
+    const docRef = doc(database, 'buildings', id);
     const docSnap = await getDoc(docRef);
     return docSnap.exists() ? (docSnap.data() as Building) : null;
   }
   
   async getUsers(): Promise<User[]> {
-    const db = this.getDb();
-    const querySnapshot = await getDocs(collection(db, 'users'));
+    const database = this.getDb();
+    const querySnapshot = await getDocs(collection(database, 'users'));
     return querySnapshot.docs.map(doc => ({ ...doc.data() } as User));
   }
 
   async createDeal(dealData: Partial<Deal>) {
-    const db = this.getDb();
+    const database = this.getDb();
     const today = new Date().toISOString().split('T')[0];
     
-    // Generate an ID if not provided
     const newId = `d${Date.now()}`;
     const newDeal: Deal = {
       deal_id: newId,
@@ -71,13 +65,13 @@ class FirestoreStore {
       ...dealData
     } as Deal;
 
-    await setDoc(doc(db, 'deals', newId), newDeal);
+    await setDoc(doc(database, 'deals', newId), newDeal);
     return newDeal;
   }
 
   async updateDeal(id: string, updates: Partial<Deal>) {
-    const db = this.getDb();
-    const docRef = doc(db, 'deals', id);
+    const database = this.getDb();
+    const docRef = doc(database, 'deals', id);
     const today = new Date().toISOString().split('T')[0];
     
     const finalUpdates = { 
@@ -100,30 +94,30 @@ class FirestoreStore {
   }
 
   async setBuildings(newBuildings: Building[]) {
-    const db = this.getDb();
-    const batch = writeBatch(db);
+    const database = this.getDb();
+    const batch = writeBatch(database);
     newBuildings.forEach(b => {
-      const ref = doc(db, 'buildings', b.building_id);
+      const ref = doc(database, 'buildings', b.building_id);
       batch.set(ref, b);
     });
     await batch.commit();
   }
 
   async setUsers(newUsers: User[]) {
-    const db = this.getDb();
-    const batch = writeBatch(db);
+    const database = this.getDb();
+    const batch = writeBatch(database);
     newUsers.forEach(u => {
-      const ref = doc(db, 'users', u.user_id);
+      const ref = doc(database, 'users', u.user_id);
       batch.set(ref, u);
     });
     await batch.commit();
   }
 
   async setDeals(newDeals: Deal[]) {
-    const db = this.getDb();
-    const batch = writeBatch(db);
+    const database = this.getDb();
+    const batch = writeBatch(database);
     newDeals.forEach(d => {
-      const ref = doc(db, 'deals', d.deal_id);
+      const ref = doc(database, 'deals', d.deal_id);
       batch.set(ref, d);
     });
     await batch.commit();

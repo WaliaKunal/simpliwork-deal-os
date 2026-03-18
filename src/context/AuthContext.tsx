@@ -70,11 +70,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      console.error("Login Failure - Details:", error);
+      console.error("Login Failure - Details:", {
+        code: error.code,
+        message: error.message,
+        customData: error.customData
+      });
       
       toast({
         title: "Sign-In Failed",
-        description: `Error: ${error.code || 'unknown'}. Please check your console for details.`,
+        description: `Firebase Error: ${error.code || 'unknown'}. Please check console for details.`,
         variant: "destructive"
       });
     }

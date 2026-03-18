@@ -1,3 +1,7 @@
+/**
+ * Global Firebase configuration for Simpliwork Deal OS.
+ * This is the ONLY configuration object used in the entire project.
+ */
 export const firebaseConfig = {
   apiKey: "AIzaSyBFcG81T0SyY74JBQ5Y2MsNRyXVha8jAGQ",
   authDomain: "simpliwork-deal-os.firebaseapp.com",

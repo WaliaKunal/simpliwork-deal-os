@@ -5,19 +5,29 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { firebaseConfig } from "./config";
 
-// Global initialization check with diagnostic logging
+/**
+ * STRIC DATA LAYER INITIALIZATION
+ * 
+ * We log the API Key presence to the console for diagnostic verification 
+ * before any initialization occurs.
+ */
 if (typeof window !== 'undefined') {
-  console.log("Deal OS: Initializing Firebase with API Key (length):", firebaseConfig.apiKey?.length);
+  console.log("Deal OS: Initializing Firebase...");
+  console.log("Config Check - API Key:", firebaseConfig.apiKey ? "PRESENT" : "MISSING");
+  console.log("Config Check - Project ID:", firebaseConfig.projectId);
 }
 
+/**
+ * Singleton Pattern: Ensure initializeApp is called exactly once.
+ */
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+/**
+ * Service Instances: Derived directly from the correctly initialized app instance.
+ */
 const authInstance = getAuth(app);
 const firestoreInstance = getFirestore(app);
 
-/**
- * Returns the already initialized App, Auth, and Firestore instances.
- * This is the single source of truth for Firebase services in the app.
- */
 export function initializeFirebase() {
   return {
     firebaseApp: app,
@@ -26,9 +36,10 @@ export function initializeFirebase() {
   };
 }
 
-// Named exports for convenience
+// Named exports for singleton usage across the app
 export { authInstance as auth, firestoreInstance as firestore, app };
 
+// Barrel exports for other Firebase utilities
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';

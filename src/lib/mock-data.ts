@@ -111,5 +111,49 @@ export const MOCK_DEALS: Deal[] = [
     decision_maker_identified: true,
     layout_uploaded_date: daysAgo(30),
     layout_revision_count: 1
+  },
+  {
+    deal_id: 'd5',
+    company_name: 'Alpha Dynamics',
+    building_id: 'b1',
+    sales_owner_email: 'sameer@simpliwork.com',
+    stage: 'Negotiation',
+    stage_updated_date: daysAgo(22),
+    requirement_summary: 'Flexible expansion space for 100 people.',
+    approx_requirement_size: 10000,
+    source_type: 'Broker',
+    source_name: 'Savills',
+    created_date: daysAgo(45),
+    last_activity_date: daysAgo(12),
+    activity_logs: [
+      { user_email: 'sameer@simpliwork.com', timestamp: daysAgo(12), note: 'Legal team reviewing commercial clauses.' }
+    ],
+    budget_clarity: false,
+    timeline_clarity: true,
+    decision_maker_identified: false,
+    layout_uploaded_date: daysAgo(35),
+    layout_revision_count: 3
+  },
+  {
+    deal_id: 'd6',
+    company_name: 'Beta Healthcare',
+    building_id: 'b1',
+    sales_owner_email: 'vikram@simpliwork.com',
+    stage: 'Solutioning',
+    stage_updated_date: daysAgo(14),
+    requirement_summary: 'Managed medical office suite.',
+    approx_requirement_size: 12000,
+    source_type: 'Direct',
+    source_name: 'LinkedIn Ad',
+    created_date: daysAgo(20),
+    last_activity_date: daysAgo(1),
+    activity_logs: [
+      { user_email: 'vikram@simpliwork.com', timestamp: daysAgo(1), note: 'Design meeting scheduled for next week.' }
+    ],
+    budget_clarity: true,
+    timeline_clarity: true,
+    decision_maker_identified: true,
+    layout_requested_date: daysAgo(13),
+    layout_revision_count: 0
   }
 ];

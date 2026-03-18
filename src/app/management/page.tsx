@@ -475,4 +475,5 @@ function KPI({ icon: Icon, label, value, subValue, color }: any) {
         </div>
       </CardContent>
     </Card>
+  );
 }

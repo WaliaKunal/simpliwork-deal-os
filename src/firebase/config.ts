@@ -1,8 +1,8 @@
 export const firebaseConfig = {
-  "projectId": "studio-4203271579-182b5",
-  "appId": "1:891815764964:web:9b24f2f9d1a9d823425df1",
-  "apiKey": "AIzaSyDBLh3yvrnWiamyWWqrDtD4WJn3RhDX1ZU",
-  "authDomain": "studio-4203271579-182b5.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "891815764964"
+  apiKey: "AIzaSyBFcG81T0SyY74JBQ5Y2MsNRyXVha8jAGQ",
+  authDomain: "simpliwork-deal-os.firebaseapp.com",
+  projectId: "simpliwork-deal-os",
+  storageBucket: "simpliwork-deal-os.firebasestorage.app",
+  messagingSenderId: "349880846443",
+  appId: "1:349880846443:web:2332d76a48d9108d38092e"
 };

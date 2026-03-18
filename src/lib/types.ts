@@ -1,4 +1,5 @@
-export type UserRole = 'Sales' | 'Design' | 'Management' | 'Admin';
+
+export type UserRole = 'SALES' | 'DESIGN' | 'MANAGEMENT' | 'ADMIN';
 
 export type DealStage = 
   | 'Qualified' 
@@ -66,4 +67,21 @@ export const STAGES: DealStage[] = [
   'LoI Initiated',
   'LoI Signed',
   'Lost'
+];
+
+export const SOURCE_TYPES = [
+  'Broker',
+  'IPC',
+  'Direct',
+  'Inbound',
+  'Existing Client',
+  'Channel Partner',
+  'Other'
+];
+
+export const ROLES: UserRole[] = [
+  'SALES',
+  'DESIGN',
+  'MANAGEMENT',
+  'ADMIN'
 ];

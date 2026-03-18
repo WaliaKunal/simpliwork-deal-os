@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -10,7 +11,8 @@ import {
   Building2, 
   Users, 
   LogOut,
-  Plus
+  Plus,
+  Database
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -25,33 +27,39 @@ export default function Navbar() {
     { 
       label: 'My Deals', 
       href: '/sales', 
-      roles: ['Sales'], 
+      roles: ['SALES'], 
       icon: Briefcase 
     },
     { 
       label: 'Design Queue', 
       href: '/design', 
-      roles: ['Design'], 
+      roles: ['DESIGN'], 
       icon: Paintbrush 
     },
     { 
       label: 'Intelligence', 
       href: '/management', 
-      roles: ['Management', 'Admin'], 
+      roles: ['MANAGEMENT', 'ADMIN'], 
       icon: LayoutDashboard 
     },
     { 
       label: 'Assets', 
       href: '/admin/buildings', 
-      roles: ['Admin'], 
+      roles: ['ADMIN'], 
       icon: Building2 
     },
     { 
       label: 'Access', 
       href: '/admin/users', 
-      roles: ['Admin'], 
+      roles: ['ADMIN'], 
       icon: Users 
     },
+    {
+      label: 'Import',
+      href: '/admin/import',
+      roles: ['ADMIN'],
+      icon: Database
+    }
   ];
 
   const filteredItems = navItems.filter(item => item.roles.includes(user.role));
@@ -85,7 +93,7 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center gap-4">
-        {user.role === 'Sales' && (
+        {user.role === 'SALES' && (
           <Link href="/sales/create">
             <Button size="sm" className="gap-2 font-bold px-4">
               <Plus className="w-4 h-4" />

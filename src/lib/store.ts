@@ -1,4 +1,5 @@
-import { Building, User, Deal, DealStage, ActivityLog } from './types';
+
+import { Building, User, Deal, ActivityLog } from './types';
 import { MOCK_BUILDINGS, MOCK_USERS, MOCK_DEALS } from './mock-data';
 
 class MockStore {
@@ -64,12 +65,17 @@ class MockStore {
     return null;
   }
 
-  addBuilding(building: Building) {
-    this.buildings.push(building);
+  // Batch update methods for the Import Utility
+  setBuildings(newBuildings: Building[]) {
+    this.buildings = newBuildings;
   }
 
-  addUser(user: User) {
-    this.users.push(user);
+  setUsers(newUsers: User[]) {
+    this.users = newUsers;
+  }
+
+  setDeals(newDeals: Deal[]) {
+    this.deals = newDeals;
   }
 }
 

@@ -1,3 +1,4 @@
+
 import { Building, User, Deal } from './types';
 
 const daysAgo = (days: number) => {
@@ -14,11 +15,11 @@ export const MOCK_BUILDINGS: Building[] = [
 ];
 
 export const MOCK_USERS: User[] = [
-  { user_id: 'u1', full_name: 'Sameer Kumar', email: 'sameer@simpliwork.com', role: 'Sales', active_status: true },
-  { user_id: 'u2', full_name: 'Anjali Sharma', email: 'anjali@simpliwork.com', role: 'Design', active_status: true },
-  { user_id: 'u3', full_name: 'Rajesh Gupta', email: 'rajesh@simpliwork.com', role: 'Management', active_status: true },
-  { user_id: 'u4', full_name: 'Admin User', email: 'admin@simpliwork.com', role: 'Admin', active_status: true },
-  { user_id: 'u5', full_name: 'Vikram Singh', email: 'vikram@simpliwork.com', role: 'Sales', active_status: true },
+  { user_id: 'u1', full_name: 'Sameer Kumar', email: 'sameer@simpliwork.com', role: 'SALES', active_status: true },
+  { user_id: 'u2', full_name: 'Anjali Sharma', email: 'anjali@simpliwork.com', role: 'DESIGN', active_status: true },
+  { user_id: 'u3', full_name: 'Rajesh Gupta', email: 'rajesh@simpliwork.com', role: 'MANAGEMENT', active_status: true },
+  { user_id: 'u4', full_name: 'Admin User', email: 'admin@simpliwork.com', role: 'ADMIN', active_status: true },
+  { user_id: 'u5', full_name: 'Vikram Singh', email: 'vikram@simpliwork.com', role: 'SALES', active_status: true },
 ];
 
 export const MOCK_DEALS: Deal[] = [
@@ -65,95 +66,5 @@ export const MOCK_DEALS: Deal[] = [
     decision_maker_identified: true,
     layout_requested_date: daysAgo(7),
     layout_revision_count: 1
-  },
-  {
-    deal_id: 'd3',
-    company_name: 'Cloud Nine',
-    building_id: 'b3',
-    sales_owner_email: 'sameer@simpliwork.com',
-    stage: 'Proposal Sent',
-    stage_updated_date: daysAgo(15),
-    requirement_summary: '200 desks requirement across two buildings.',
-    approx_requirement_size: 20000,
-    source_type: 'Broker',
-    source_name: 'JLL',
-    created_date: daysAgo(40),
-    last_activity_date: daysAgo(1),
-    activity_logs: [
-      { user_email: 'sameer@simpliwork.com', timestamp: daysAgo(1), note: 'Followed up on proposal. They are comparing with competitors.' }
-    ],
-    budget_clarity: true,
-    timeline_clarity: true,
-    decision_maker_identified: true,
-    layout_uploaded_date: daysAgo(20),
-    layout_file_upload: 'layout_v2_final.pdf',
-    layout_revision_count: 2
-  },
-  {
-    deal_id: 'd4',
-    company_name: 'Zenith Labs',
-    building_id: 'b4',
-    sales_owner_email: 'vikram@simpliwork.com',
-    stage: 'LoI Signed',
-    stage_updated_date: daysAgo(5),
-    requirement_summary: 'Specialized lab space and office combo.',
-    approx_requirement_size: 8000,
-    source_type: 'Broker',
-    source_name: 'CBRE',
-    created_date: daysAgo(60),
-    last_activity_date: daysAgo(5),
-    loi_signed_date: daysAgo(5),
-    activity_logs: [
-      { user_email: 'vikram@simpliwork.com', timestamp: daysAgo(5), note: 'LoI signed and deposit received.' }
-    ],
-    budget_clarity: true,
-    timeline_clarity: true,
-    decision_maker_identified: true,
-    layout_uploaded_date: daysAgo(30),
-    layout_revision_count: 1
-  },
-  {
-    deal_id: 'd5',
-    company_name: 'Alpha Dynamics',
-    building_id: 'b1',
-    sales_owner_email: 'sameer@simpliwork.com',
-    stage: 'Negotiation',
-    stage_updated_date: daysAgo(22),
-    requirement_summary: 'Flexible expansion space for 100 people.',
-    approx_requirement_size: 10000,
-    source_type: 'Broker',
-    source_name: 'Savills',
-    created_date: daysAgo(45),
-    last_activity_date: daysAgo(12),
-    activity_logs: [
-      { user_email: 'sameer@simpliwork.com', timestamp: daysAgo(12), note: 'Legal team reviewing commercial clauses.' }
-    ],
-    budget_clarity: false,
-    timeline_clarity: true,
-    decision_maker_identified: false,
-    layout_uploaded_date: daysAgo(35),
-    layout_revision_count: 3
-  },
-  {
-    deal_id: 'd6',
-    company_name: 'Beta Healthcare',
-    building_id: 'b1',
-    sales_owner_email: 'vikram@simpliwork.com',
-    stage: 'Solutioning',
-    stage_updated_date: daysAgo(14),
-    requirement_summary: 'Managed medical office suite.',
-    approx_requirement_size: 12000,
-    source_type: 'Direct',
-    source_name: 'LinkedIn Ad',
-    created_date: daysAgo(20),
-    last_activity_date: daysAgo(1),
-    activity_logs: [
-      { user_email: 'vikram@simpliwork.com', timestamp: daysAgo(1), note: 'Design meeting scheduled for next week.' }
-    ],
-    budget_clarity: true,
-    timeline_clarity: true,
-    decision_maker_identified: true,
-    layout_requested_date: daysAgo(13),
-    layout_revision_count: 0
   }
 ];

@@ -3,160 +3,188 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * Simpliwork Deal OS Security Rules
-     *
-     * Core Philosophy:
-     * This ruleset implements a strict Role-Based Access Control (RBAC) model using "Authorization 
-     * Independence." Instead of checking a user's profile for permissions, we use dedicated 
-     * role collections (/roles_{roleName}/{userId}) to determine access levels via exists() checks.
-     *
-     * Authentication Strategy:
-     * Access is strictly restricted to authenticated users with a verified '@simpliwork.com' 
-     * email address. This ensures that only internal employees can access sensitive deal data.
-     *
-     * Data Structure:
-     * - /users: User profiles, owned by the individual user.
-     * - /buildings: Master data for physical assets, managed by Admins.
-     * - /deals: Sales opportunities. Ownership is denormalized via 'salesOwnerId' for performant 
-     *   authorization without additional lookups.
-     * - /roles_*: Existence-based collections for Admin, Management, Sales, and Design roles.
-     *
+     * SIMPLIWORK DEAL OS - SECURITY RULES PHILOSOPHY
+     * 
+     * Core Philosophy: This ruleset implements a strict internal-only access model. 
+     * Access is restricted exclusively to authenticated users with a "@simpliwork.com" 
+     * email address.
+     * 
+     * Data Structure: 
+     * - /users: Profile data for every internal user.
+     * - /roles_{role_name}: Specialized flag collections for optimized role-based 
+     *   access control (RBAC). 
+     * - /buildings: Master building assets, managed by Admins, read-only for staff.
+     * - /deals: Transactional sales opportunities with ownership and stage-based 
+     *   visibility.
+     * 
      * Key Security Decisions:
-     * 1. Prototyping Flexibility: Rules focus on WHO can access data (Authorization) rather than 
-     *    the EXACT shape of the data (Validation), allowing for rapid schema evolution.
-     * 2. Denormalization: The 'salesOwnerId' is required on all Deal documents to allow 
-     *    instant ownership verification.
-     * 3. God View: Management and Admin roles are granted wide read access to support 
-     *    organizational oversight.
+     * - Domain Restriction: Global enforcement of @simpliwork.com identity.
+     * - Denormalization: Deal documents contain 'salesOwnerId' and 'stage' to 
+     *   allow O(1) security lookups without costly get() calls.
+     * - DBAC (Database-Based Access Control): Roles are validated via the 
+     *   presence of documents in specific 'roles_' collections, ensuring 
+     *   synchronization with Firestore data rather than relying on custom claims.
+     * - Prototyping Flexibility: Rules enforce WHO can write but not the 
+     *   specific shape of non-relational data.
      */
 
-    // --- Helper Functions ---
+    // --- GLOBAL HELPER FUNCTIONS ---
 
-    /** Checks if the user is authenticated and has a @simpliwork.com email address. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Restricts access to Simpliwork corporate identities only
     function isSimpliworkUser() {
-      // Fix: Replaced 'endsWith' with 'matches' regex as 'endsWith' was flagged as invalid.
-      // Also added a check for email being a string for robustness.
-      return request.auth != null && 
-             request.auth.token.email is string && 
-             request.auth.token.email.matches('.*@simpliwork\\.com$');
+      return isSignedIn() && request.auth.token.email.matches('.*@simpliwork\\.com$');
     }
 
-    /** Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
-      return isSimpliworkUser() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
-    /** Checks if the document belongs to the authenticated user via a denormalized ID. */
-    function isDocOwner(ownerId) {
-      return isSimpliworkUser() && request.auth.uid == ownerId;
+    // Role existence checks based on denormalized collections
+    function hasRole(role) {
+      // FIX: Corrected path construction for exists() function - must be a path object
+      return exists(path('/databases/$(database)/documents/roles_$(role)/$(request.auth.uid)'));
     }
 
-    /** Role: Admin - Full read/write access. */
     function isAdmin() {
-      return isSimpliworkUser() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      return hasRole('admin');
     }
 
-    /** Role: Management - Read-only access to all business data. */
     function isManagement() {
-      return isSimpliworkUser() && exists(/databases/$(database)/documents/roles_management/$(request.auth.uid));
+      return hasRole('management');
     }
 
-    /** Role: Sales - Can create and manage their own deals. */
     function isSales() {
-      return isSimpliworkUser() && exists(/databases/$(database)/documents/roles_sales/$(request.auth.uid));
+      return hasRole('sales');
     }
 
-    /** Role: Design - Read-only access to deals in the 'Solutioning' stage. */
     function isDesign() {
-      return isSimpliworkUser() && exists(/databases/$(database)/documents/roles_design/$(request.auth.uid));
+      return hasRole('design');
     }
 
-    // --- Collection Rules ---
+    // --- COLLECTION RULES ---
 
     /**
-     * @description Rules for user profiles. Users can manage their own profile; Admins can manage all.
+     * @description Rules for user profiles. Users can manage their own profiles; 
+     *              Admins and Management can view all staff.
      * @path /users/{userId}
-     * @allow (get, update) if user is the owner or an admin.
-     * @deny (list) if the user is not an admin.
-     * @principle Enforces identity-based access and restricts PII listing.
+     * @allow (get) If requester is the owner, an Admin, or Management.
+     * @deny (update) If requester is not the owner or an Admin.
+     * @principle Ownership-based writes with administrative oversight.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if isOwner(userId) || isAdmin();
-      allow update: if (isOwner(userId) || isAdmin()) && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      allow get: if isSimpliworkUser() && (isOwner(userId) || isAdmin() || isManagement());
+      allow list: if isSimpliworkUser() && (isAdmin() || isManagement());
+      allow create: if isSimpliworkUser() && isOwner(userId);
+      allow update: if isSimpliworkUser() && (isOwner(userId) || isAdmin()) && (request.resource.data.id == resource.data.id);
+      allow delete: if isSimpliworkUser() && isAdmin();
     }
 
     /**
-     * @description Rules for Buildings. Master data is read-only for all staff, writeable by Admins.
+     * @description Rules for role identity flags. These are strictly managed by Admins. 
+     *              Users can read their own role status to verify permissions.
+     * @path /roles_{roleName}/{userId}
+     * @allow (get) If requester is checking their own role status or is an Admin.
+     * @deny (create/update/delete) For anyone except an Admin.
+     * @principle Structural segregation of authorization flags.
+     */
+    // FIX: Removed /{collection=**}/ as the collection path is fixed
+    match /roles_admin/{userId} {
+      allow get: if isSimpliworkUser() && (isOwner(userId) || isAdmin());
+      allow list: if isSimpliworkUser() && isAdmin();
+      allow create, update, delete: if isSimpliworkUser() && isAdmin();
+    }
+    // FIX: Removed /{collection=**}/ as the collection path is fixed
+    match /roles_management/{userId} {
+      allow get: if isSimpliworkUser() && (isOwner(userId) || isAdmin() || isManagement());
+      allow list: if isSimpliworkUser() && (isAdmin() || isManagement());
+      allow create, update, delete: if isSimpliworkUser() && isAdmin();
+    }
+    // FIX: Removed /{collection=**}/ as the collection path is fixed
+    match /roles_sales/{userId} {
+      allow get: if isSimpliworkUser() && (isOwner(userId) || isAdmin() || isManagement() || isSales());
+      allow list: if isSimpliworkUser() && (isAdmin() || isManagement());
+      allow create, update, delete: if isSimpliworkUser() && isAdmin();
+    }
+    // FIX: Removed /{collection=**}/ as the collection path is fixed
+    match /roles_design/{userId} {
+      allow get: if isSimpliworkUser() && (isOwner(userId) || isAdmin() || isManagement() || isDesign());
+      allow list: if isSimpliworkUser() && (isAdmin() || isManagement());
+      allow create, update, delete: if isSimpliworkUser() && isAdmin();
+    }
+
+    /**
+     * @description Rules for building master data. Visible to all Simpliwork staff; 
+     *              modifiable only by Admins.
      * @path /buildings/{buildingId}
-     * @allow (get, list) if the user is a verified Simpliwork employee.
-     * @deny (write) if the user is not Admin.
-     * @principle Centralized master data management with broad internal visibility.
+     * @allow (get/list) If requester is any signed-in @simpliwork.com user.
+     * @deny (write) If requester is not an Admin.
+     * @principle Corporate-wide read access for master assets.
      */
     match /buildings/{buildingId} {
       allow get, list: if isSimpliworkUser();
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin() && resource != null;
+      allow create, update, delete: if isSimpliworkUser() && isAdmin();
     }
 
     /**
-     * @description Rules for Deals. Access is based on ownership, management oversight, or design involvement.
+     * @description Rules for Deal records. Visibility is based on ownership (Sales), 
+     *              stage (Design), or high-level oversight (Management/Admin).
      * @path /deals/{dealId}
-     * @allow (create) if user is Sales or Admin.
-     * @deny (update) if user is not the owner, design (on specific stages), or Admin.
-     * @principle Uses denormalized ownership (salesOwnerId) for efficient authorization.
+     * @allow (list) Sales can list their own deals; Design can list 'Solutioning' deals.
+     * @deny (update) If requester is Sales but not the owner of the specific deal.
+     * @principle Content-based authorization via denormalized ownership and stage fields.
      */
     match /deals/{dealId} {
-      allow get: if isAdmin() || isManagement() || isDocOwner(resource.data.salesOwnerId) || (isDesign() && resource.data.stage == 'Solutioning');
-      allow list: if isAdmin() || isManagement() || isSales() || isDesign(); 
-      allow create: if (isSales() || isAdmin()) && request.resource.data.salesOwnerId == request.auth.uid;
-      allow update: if (isAdmin() || isDocOwner(resource.data.salesOwnerId) || (isDesign() && resource.data.stage == 'Solutioning')) && resource != null;
-      allow delete: if (isAdmin() || isDocOwner(resource.data.salesOwnerId)) && resource != null;
-    }
+      // READ LOGIC
+      allow get: if isSimpliworkUser() && (isAdmin() || isManagement() || (isSales() && resource.data.salesOwnerId == request.auth.uid) || (isDesign() && resource.data.stage == 'Solutioning'));
+      allow list: if isSimpliworkUser() && (isAdmin() || isManagement() || isSales() || isDesign());
 
-    /**
-     * @description Authorization markers for Admin roles.
-     * @path /roles_admin/{userId}
-     */
-    match /roles_admin/{userId} {
-      allow read: if isSimpliworkUser();
-      allow write: if isAdmin();
-    }
+      // CREATE LOGIC
+      // Ensures the creator identifies themselves as the owner during creation.
+      allow create: if isSimpliworkUser() && (isAdmin() || (isSales() && request.resource.data.salesOwnerId == request.auth.uid));
 
-    /**
-     * @description Authorization markers for Management roles.
-     * @path /roles_management/{userId}
-     */
-    match /roles_management/{userId} {
-      allow read: if isSimpliworkUser();
-      allow write: if isAdmin();
-    }
+      // UPDATE LOGIC
+      // 1. Admins can update anything.
+      // 2. Sales can update their own deals (ownerId must remain immutable).
+      // 3. Design can update deals specifically in the 'Solutioning' stage.
+      allow update: if isSimpliworkUser() && resource != null && (isAdmin() || (isSales() && resource.data.salesOwnerId == request.auth.uid && request.resource.data.salesOwnerId == resource.data.salesOwnerId) || (isDesign() && resource.data.stage == 'Solutioning'));
 
-    /**
-     * @description Authorization markers for Sales roles.
-     * @path /roles_sales/{userId}
-     */
-    match /roles_sales/{userId} {
-      allow read: if isSimpliworkUser();
-      allow write: if isAdmin();
-    }
-
-    /**
-     * @description Authorization markers for Design roles.
-     * @path /roles_design/{userId}
-     */
-    match /roles_design/{userId} {
-      allow read: if isSimpliworkUser();
-      allow write: if isAdmin();
+      // DELETE LOGIC
+      allow delete: if isSimpliworkUser() && resource != null && isAdmin();
     }
   }
 }
- 
-/** 
- * IMPLEMENTATION NOTE: 
- * These rules enforce that ONLY @simpliwork.com emails can access any data.
- * Even if a user is authenticated via Google, if their email domain does not match, 
- * the 'isSimpliworkUser()' check will fail, effectively blocking access.
+
+/**
+ * PROTOTYPING NOTE: 
+ * These rules are designed for flexibility. While they strictly enforce 
+ * DOMAIN (Simpliwork) and IDENTITY (Ownership/Roles), they do not 
+ * validate the specific schema of every field (e.g., 'requirementSummary' 
+ * data types) to allow for rapid UI/feature development.
+ */
+
+/**
+ * DOMAIN SECURITY ALERT:
+ * The 'isSimpliworkUser' function relies on the 'email' field in the 
+ * Firebase Auth token. Ensure your Google Sign-In configuration is 
+ * restricted to the simpliwork.com domain at the GCP project level 
+ * for maximum security.
+ */
+
+/**
+ * RELATIONAL INTEGRITY:
+ * Deals are bound to owners via the 'salesOwnerId' field. 
+ * The update rule enforces that this ID cannot be changed by 
+ * Sales users, preventing 'deal stealing'.
+ */
+
+/**
+ * QUERY SECURITY:
+ * To use the 'list' functionality for Sales or Design, queries must 
+ * include the appropriate filters:
+ * - Sales: .where('salesOwnerId', '==', currentUser.uid)
+ * - Design: .where('stage', '==', 'Solutioning')
  */

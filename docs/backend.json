@@ -4,7 +4,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Building",
       "type": "object",
-      "description": "Represents a physical building managed by Simpliwork, to which deals are linked.",
+      "description": "Represents a physical building asset in the Simpliwork portfolio, to which deals are linked.",
       "properties": {
         "id": {
           "type": "string",
@@ -12,7 +12,7 @@
         },
         "name": {
           "type": "string",
-          "description": "The official name of the building."
+          "description": "The name of the building."
         },
         "city": {
           "type": "string",
@@ -20,11 +20,11 @@
         },
         "cluster": {
           "type": "string",
-          "description": "The geographical or logical cluster the building belongs to."
+          "description": "A geographical or business cluster the building belongs to."
         },
         "activeStatus": {
           "type": "boolean",
-          "description": "Indicates if the building is currently active and available for new deals."
+          "description": "Indicates if the building is currently active and available for deals."
         }
       },
       "required": [
@@ -39,7 +39,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user within the Simpliwork Deal OS, with specific roles and permissions.",
+      "description": "Represents an internal user of the Simpliwork Deal OS, with specific roles and access permissions.",
       "properties": {
         "id": {
           "type": "string",
@@ -51,12 +51,12 @@
         },
         "email": {
           "type": "string",
-          "description": "The user's email address, used for login and identification.",
+          "description": "The email address of the user, used for authentication and identification. (Format: email)",
           "format": "email"
         },
         "role": {
           "type": "string",
-          "description": "The assigned role of the user (Sales, Design, Management, Admin)."
+          "description": "The role assigned to the user within the system (e.g., Sales, Design, Management, Admin)."
         },
         "activeStatus": {
           "type": "boolean",
@@ -75,7 +75,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Deal",
       "type": "object",
-      "description": "Represents a qualified sales opportunity being tracked by Simpliwork Deal OS.",
+      "description": "Represents a qualified sales opportunity linked to a specific building.",
       "properties": {
         "id": {
           "type": "string",
@@ -83,15 +83,16 @@
         },
         "companyName": {
           "type": "string",
-          "description": "The name of the client company associated with this deal."
+          "description": "The name of the client company for this deal."
         },
         "buildingId": {
           "type": "string",
-          "description": "Reference to the Building entity this deal is linked to. (Relationship: Building 1:N Deal)"
+          "description": "Reference to the Building this deal is associated with. (Relationship: Building 1:N Deal)"
         },
         "salesOwnerEmail": {
           "type": "string",
-          "description": "The email address of the Sales user who owns and manages this deal. (Reference to User's email)."
+          "description": "The email address of the sales user who owns this deal. (Relationship: User 1:N Deal)",
+          "format": "email"
         },
         "stage": {
           "type": "string",
@@ -99,78 +100,77 @@
         },
         "requirementSummary": {
           "type": "string",
-          "description": "A detailed summary of the client's requirements for the deal."
+          "description": "A summary of the client's space and solution requirements."
         },
         "approxRequirementSize": {
           "type": "number",
-          "description": "The approximate size or quantity of the client's requirement (e.g., square footage, number of units)."
+          "description": "The approximate size of the space required by the client, in square feet or similar units."
         },
         "sourceType": {
           "type": "string",
-          "description": "The category of the source from which the deal originated (e.g., Direct, Referral, Marketing)."
+          "description": "The type of source for this deal (e.g., Inbound, Referral, Outbound)."
         },
         "sourceName": {
           "type": "string",
-          "description": "The specific name or identifier of the deal's source."
+          "description": "The specific name or channel of the source (e.g., Google Ads, Partner A, LinkedIn)."
         },
         "createdDate": {
           "type": "string",
-          "description": "The date and time when the deal record was first created.",
+          "description": "The date and time when the deal was first created in the system. (Format: date-time)",
           "format": "date-time"
         },
         "lastActivityDate": {
           "type": "string",
-          "description": "The date and time of the last recorded activity or update on the deal.",
+          "description": "The date and time of the last recorded sales activity on this deal. (Format: date-time)",
           "format": "date-time"
         },
         "budgetClarity": {
           "type": "boolean",
-          "description": "Indicates whether the client's budget for the deal is clear and understood by Sales."
+          "description": "Indicates if the client's budget for the deal is clear."
         },
         "timelineClarity": {
           "type": "boolean",
-          "description": "Indicates whether the client's timeline for project execution is clear and understood by Sales."
+          "description": "Indicates if the client's timeline for moving forward is clear."
         },
         "decisionMakerIdentified": {
           "type": "boolean",
-          "description": "Indicates whether the key decision-maker(s) on the client side have been identified."
+          "description": "Indicates if the key decision maker on the client side has been identified."
         },
         "layoutRequestedDate": {
           "type": "string",
-          "description": "The date when a layout design or solutioning support was formally requested from Design.",
+          "description": "The date when a layout design was requested for the deal. (Format: date-time)",
           "format": "date-time"
         },
         "layoutUploadedDate": {
           "type": "string",
-          "description": "The date and time when the final (or latest) layout design file was uploaded by the Design team.",
+          "description": "The date when the layout design file was uploaded. (Format: date-time)",
           "format": "date-time"
         },
         "layoutRevisionCount": {
           "type": "number",
-          "description": "The total number of revisions made to the layout design for this deal."
+          "description": "The number of revisions made to the layout design for this deal."
         },
         "designNote": {
           "type": "string",
-          "description": "Notes and comments from the Design team regarding the solutioning or layout specifics."
+          "description": "Notes from the design team regarding the solutioning or layout."
         },
         "layoutFileUpload": {
           "type": "string",
-          "description": "A URL or path to the uploaded layout design file, if applicable.",
-          "format": "uri"
+          "description": "A reference or URI to the uploaded layout design file."
         },
         "loiInitiatedDate": {
           "type": "string",
-          "description": "The date when the Letter of Intent (LoI) process was formally initiated with the client.",
+          "description": "The date when the Letter of Intent (LoI) process was initiated. (Format: date-time)",
           "format": "date-time"
         },
         "loiSignedDate": {
           "type": "string",
-          "description": "The date when the Letter of Intent (LoI) was officially signed by both parties.",
+          "description": "The date when the Letter of Intent (LoI) was officially signed. (Format: date-time)",
           "format": "date-time"
         },
         "lostReason": {
           "type": "string",
-          "description": "The reason why the deal was marked as 'Lost', if applicable."
+          "description": "The reason why the deal was lost, if applicable."
         }
       },
       "required": [
@@ -182,8 +182,7 @@
         "requirementSummary",
         "sourceType",
         "sourceName",
-        "createdDate",
-        "lastActivityDate"
+        "createdDate"
       ]
     }
   },
@@ -202,43 +201,11 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores individual user profiles. Each document is identified by the user's Firebase Auth UID. The 'role' field is used for UI logic and backend processing, while explicit role collections are used for security rule authorization. Access is typically restricted to the user themselves and Admin users.",
+          "description": "Stores user profiles including their full name, email, role, and active status. This is the primary source of truth for user data. Backend processes ensure synchronization of the 'role' field with dedicated role collections used for security rules.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique Firebase Authentication User ID (UID) for the user."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/buildings/{buildingId}",
-        "definition": {
-          "entityName": "Building",
-          "schema": {
-            "$ref": "#/backend/entities/Building"
-          },
-          "description": "Master data for Simpliwork buildings. Documents are created and managed by Admin users. All other authenticated roles have read-only access. The 'id' field within the schema corresponds to 'buildingId' in the path.",
-          "params": [
-            {
-              "name": "buildingId",
-              "description": "The unique identifier for the building."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/deals/{dealId}",
-        "definition": {
-          "entityName": "Deal",
-          "schema": {
-            "$ref": "#/backend/entities/Deal"
-          },
-          "description": "Main collection for tracking qualified deals. Each deal document includes denormalized 'salesOwnerId' (Firebase UID of the sales owner) for authorization independence, and 'stage' for QAP-compliant filtering for Design users. Access is strictly controlled by role and ownership.",
-          "params": [
-            {
-              "name": "dealId",
-              "description": "The unique identifier for the deal."
+              "description": "The unique ID of the user, corresponding to Firebase Authentication's UID."
             }
           ]
         }
@@ -250,11 +217,11 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Authorization collection: The existence of a document in this collection signifies that the associated 'userId' (Firebase UID) has the 'Admin' role, granting full read/write privileges across the application. Used for Authorization Independence via 'Existence over Content'.",
+          "description": "A denormalized collection to signify Admin role membership. The existence of a document at this path indicates the corresponding user is an Admin. Used for efficient existence checks in security rules to ensure Authorization Independence.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique Firebase Authentication User ID (UID) of an Admin user."
+              "description": "The unique ID of the user who holds the Admin role."
             }
           ]
         }
@@ -266,11 +233,11 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Authorization collection: The existence of a document in this collection signifies that the associated 'userId' (Firebase UID) has the 'Management' role, granting read-only 'God View' access to all deals and buildings. Used for Authorization Independence via 'Existence over Content'.",
+          "description": "A denormalized collection to signify Management role membership. The existence of a document at this path indicates the corresponding user is Management. Used for efficient existence checks in security rules to ensure Authorization Independence.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique Firebase Authentication User ID (UID) of a Management user."
+              "description": "The unique ID of the user who holds the Management role."
             }
           ]
         }
@@ -282,11 +249,11 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Authorization collection: The existence of a document in this collection signifies that the associated 'userId' (Firebase UID) has the 'Sales' role, granting permissions to create and manage their own deals. Used for Authorization Independence via 'Existence over Content'.",
+          "description": "A denormalized collection to signify Sales role membership. The existence of a document at this path indicates the corresponding user is Sales. Used for efficient existence checks in security rules to ensure Authorization Independence.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique Firebase Authentication User ID (UID) of a Sales user."
+              "description": "The unique ID of the user who holds the Sales role."
             }
           ]
         }
@@ -298,16 +265,48 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Authorization collection: The existence of a document in this collection signifies that the associated 'userId' (Firebase UID) has the 'Design' role, granting specific read access to 'Solutioning' stage deals and limited update capabilities. Used for Authorization Independence via 'Existence over Content'.",
+          "description": "A denormalized collection to signify Design role membership. The existence of a document at this path indicates the corresponding user is Design. Used for efficient existence checks in security rules to ensure Authorization Independence.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique Firebase Authentication User ID (UID) of a Design user."
+              "description": "The unique ID of the user who holds the Design role."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/buildings/{buildingId}",
+        "definition": {
+          "entityName": "Building",
+          "schema": {
+            "$ref": "#/backend/entities/Building"
+          },
+          "description": "Master data for physical building assets. All documents in this collection share the same security requirements (primarily read-only for most roles, full access for Admin).",
+          "params": [
+            {
+              "name": "buildingId",
+              "description": "The unique ID for a Building asset."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/deals/{dealId}",
+        "definition": {
+          "entityName": "Deal",
+          "schema": {
+            "$ref": "#/backend/entities/Deal"
+          },
+          "description": "Core transaction data representing qualified sales opportunities. Includes denormalized 'salesOwnerId' (the owner's UID) and 'stage' fields for Authorization Independence and efficient QAP queries by Sales and Design users.",
+          "params": [
+            {
+              "name": "dealId",
+              "description": "The unique ID for a sales deal."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to be highly secure, scalable, and debuggable, strictly adhering to the core design principles and strategy mandates. \n\n**Authorization Independence via Denormalization:**\n1.  **Deal Ownership:** For the `/deals/{dealId}` collection, the `salesOwnerId` (Firebase Authentication UID of the sales owner) is denormalized directly into each `Deal` document. This is critical for authorization independence, as it allows security rules to evaluate ownership (e.g., `resource.data.salesOwnerId == request.auth.uid`) without requiring `get()` calls to the `/users` collection or other parent documents. This enables atomic operations and simplifies rule logic, aligning with the CRITICAL mandate to avoid hierarchical authorization dependencies.\n2.  **Role-Based Access (DBAC):** Instead of relying on a 'role' field within the `/users/{userId}` document for primary authorization, dedicated role collections are used: `/roles_admin/{userId}`, `/roles_management/{userId}`, `/roles_sales/{userId}`, and `/roles_design/{userId}`. The mere existence of a document for a user's `uid` in these collections grants the respective role. This 'Existence over Content' approach satisfies DBAC (roles stored in DB, relying on `request.auth.uid`) and Authorization Independence (rules use `exists()` checks, not `get()` on user profiles for roles).\n\n**Support for Query Against Permitted Subsets (QAPs):**\n1.  **Management (God View):** Management users are granted read access to *all* documents in `/deals/{dealId}` via an `exists(/roles_management/$(request.auth.uid))` check. This fully supports the "
+    "reasoning": "The Firestore structure for Simpliwork Deal OS v1 is designed following the core principles of Authorization Independence, Structural Segregation, and DBAC, primarily to enable simple, robust, and debuggable security rules while ensuring QAPs. \n\n**Authorization Independence via Denormalization:**\nThis design critically addresses Authorization Independence by denormalizing key authorization attributes directly into the documents where they are needed for access decisions, thereby eliminating the need for `get()` operations in security rules on dependent documents. \n\n1.  **Deal Authorization:** Each `/deals/{dealId}` document will include `salesOwnerId` (the Firebase `uid` of the sales owner) and its current `stage`. This allows security rules to evaluate access directly from the `resource.data` of the requested deal. For example, Sales users' access to their own deals will be checked via `request.auth.uid == resource.data.salesOwnerId`, and Design users' visibility for 'Solutioning' deals via `resource.data.stage == 'Solutioning'`. This prevents transactions/batches from breaking and greatly simplifies rule logic.\n2.  **Role Authorization:** User roles (Admin, Management, Sales, Design) are denormalized into dedicated top-level collections (e.g., `/roles_admin/{userId}`, `/roles_management/{userId}`). The existence of a document at `roles_admin/$(request.auth.uid)` directly signifies the Admin role. This allows security rules to use efficient `exists()` checks (e.g., `exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))`) rather than performing a `get()` operation on the `users` collection to retrieve the user's `role` field. While the `User` entity's schema includes `role`, a backend function will be responsible for synchronizing the `role` field in `/users/{userId}` with the appropriate `/roles_*` collections, ensuring the `users` collection remains the single source of truth for application logic and UI, while the `roles_*` collections serve the security rules.\n\n**Structural Segregation (Homogeneous Security Posture):**\nEach collection is designed to hold documents with a uniform security posture, simplifying rule sets:\n1.  `/users/{userId}`: Stores individual user profiles, primarily accessible by the user themselves or by Admins.\n2.  `/roles_admin/{userId}`, `/roles_management/{userId}`, `/roles_sales/{userId}`, `/roles_design/{userId}`: These collections are strictly for role membership flags, enabling efficient role-based authorization for all users. Their homogeneous nature means rules only check for document existence.\n3.  `/buildings/{buildingId}`: Contains master data for buildings, generally read-only for most roles (except Admin) and globally accessible.\n4.  `/deals/{dealId}`: Contains all deal records. Authorization within this collection is managed by the denormalized `salesOwnerId` and `stage` fields, rather than requiring different subcollections for different deal types or stages.\n\n**QAPs (Queries for Authorized Paths):**\nThis structure directly supports secure `list` operations without requiring rules to act as filters:\n1.  **Sales Home ('My Deals'):** Sales users will query `/deals` where `salesOwnerId == request.auth.uid`. Rules will enforce that they can only read deals matching their `uid` as the `salesOwnerId`, ensuring only authorized data is returned.\n2.  **Design Solutioning Queue:** Design users will query `/deals` where `stage == 'Solutioning'`. Rules will enforce that only Design users can perform this query and only see deals in the 'Solutioning' stage.\n3.  **Management Dashboard ('God View'):** Management users, identified by their `roles_management` membership, will have read-only access to all documents in `/deals`, `/buildings`, and `/users`. This allows them to execute broad queries for their dashboard views and apply various filters client-side (or through backend functions for more complex analytics).\n4.  **Admin Pages:** Admin users, identified by `roles_admin` membership, have full read/write access to `/buildings` and `/users` for master data and user administration.\n\n**DBAC (No Custom Claims):** All authorization decisions are based on data stored within Firestore (the `roles_*` collections, `salesOwnerId`, `stage`) and `request.auth.uid`, completely avoiding reliance on Firebase Custom Claims."
   }
 }

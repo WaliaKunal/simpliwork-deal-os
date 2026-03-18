@@ -1,6 +1,7 @@
 /**
  * Global Firebase configuration for Simpliwork Deal OS.
- * This is the ONLY configuration object used in the entire project.
+ * This file is maintained for compatibility, but the master config 
+ * is now in src/firebase/init.ts to prevent circular loading issues.
  */
 export const firebaseConfig = {
   apiKey: "AIzaSyApDTF72-gR9yhLcBF30Zuj-j4ROFIjL0w",

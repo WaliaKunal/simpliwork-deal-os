@@ -9,7 +9,7 @@ import {
   GoogleAuthProvider, 
   signOut
 } from 'firebase/auth';
-import { auth } from '@/firebase/init'; // Explicit import from init to avoid barrel loops
+import { auth } from '@/firebase/init';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
@@ -46,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               full_name: firebaseUser.displayName || foundUser.full_name,
             });
           } else {
+            // User has the domain but isn't in our internal directory
             signOut(auth);
             setUser(null);
             toast({
@@ -69,18 +70,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     provider.setCustomParameters({ prompt: 'select_account' });
 
     try {
-      // Direct Firebase Popup Flow
+      console.log("Attempting Google Sign-In with popup...");
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      console.error("Login Failure - Details:", {
-        code: error.code,
-        message: error.message,
-        customData: error.customData
-      });
+      // LOG THE FULL ERROR OBJECT FOR DIAGNOSTICS
+      console.error("Login Failure - Full Error Object:", error);
+      
+      const errorCode = error.code || "unknown-error";
+      const errorMessage = error.message || "An unexpected error occurred during sign-in.";
       
       toast({
         title: "Sign-In Failed",
-        description: `Code: ${error.code}. Please ensure this domain is authorized in Firebase Console.`,
+        description: `Firebase Error [${errorCode}]: ${errorMessage}`,
         variant: "destructive"
       });
     }

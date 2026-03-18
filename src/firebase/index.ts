@@ -1,22 +1,20 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { firebaseConfig } from "./config";
 
-// Cache SDK instances to ensure consistency
-let app: FirebaseApp | undefined;
-let authInstance: any;
-let firestoreInstance: any;
+// Ensure Firebase is initialized exactly once
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const authInstance = getAuth(app);
+const firestoreInstance = getFirestore(app);
 
+/**
+ * Single source of truth for Firebase service initialization.
+ * Returns the already initialized App, Auth, and Firestore instances.
+ */
 export function initializeFirebase() {
-  if (!app) {
-    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-    authInstance = getAuth(app);
-    firestoreInstance = getFirestore(app);
-  }
-
   return {
     firebaseApp: app,
     auth: authInstance,
@@ -24,6 +22,7 @@ export function initializeFirebase() {
   };
 }
 
+// Re-export other Firebase utilities
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';

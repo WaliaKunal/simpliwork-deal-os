@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/lib/types';
+import { User as AppUser } from '@/lib/types';
 import { MOCK_USERS } from '@/lib/mock-data';
 import { 
   onAuthStateChanged, 
@@ -9,11 +9,11 @@ import {
   GoogleAuthProvider, 
   signOut
 } from 'firebase/auth';
-import { auth } from '@/firebase'; // Use the strictly initialized auth singleton
+import { auth } from '@/firebase/init'; // Explicit import from init to avoid barrel loops
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -22,14 +22,14 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
+    // Standard auth state listener
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // Enforce domain restriction
         if (!firebaseUser.email?.endsWith('@simpliwork.com')) {
           signOut(auth);
           setUser(null);
@@ -39,7 +39,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             variant: "destructive"
           });
         } else {
-          // Map to local user directory
           const foundUser = MOCK_USERS.find(u => u.email === firebaseUser.email);
           if (foundUser) {
             setUser({
@@ -47,12 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               full_name: firebaseUser.displayName || foundUser.full_name,
             });
           } else {
-            // Authorized domain but not in system
             signOut(auth);
             setUser(null);
             toast({
               title: "Unauthorized",
-              description: "Email authorized but user not found in directory. Contact admin.",
+              description: "Email authorized but user not found in internal directory.",
               variant: "destructive"
             });
           }
@@ -66,29 +64,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [toast]);
 
-  /**
-   * login - Triggers the Google Sign-In popup flow with detailed error diagnostics.
-   */
   const login = async () => {
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({
-      prompt: 'select_account'
-    });
+    provider.setCustomParameters({ prompt: 'select_account' });
 
     try {
-      // Standard Firebase Popup Auth Flow
+      // Direct Firebase Popup Flow
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      // Detailed diagnostic logging for identifying config/domain issues
-      console.group("Firebase Auth Error Diagnostics");
-      console.error("Error Code:", error.code);
-      console.error("Error Message:", error.message);
-      if (error.customData) console.error("Custom Data:", error.customData);
-      console.groupEnd();
+      console.error("Login Failure - Details:", {
+        code: error.code,
+        message: error.message,
+        customData: error.customData
+      });
       
       toast({
-        title: `Login Error: ${error.code}`,
-        description: error.message || "Authentication failed. Check console for details.",
+        title: "Sign-In Failed",
+        description: `Code: ${error.code}. Please ensure this domain is authorized in Firebase Console.`,
         variant: "destructive"
       });
     }
@@ -98,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signOut(auth);
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error("Logout error:", error);
     }
   };
 

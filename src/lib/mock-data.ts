@@ -20,6 +20,7 @@ export const MOCK_USERS: User[] = [
   { user_id: 'u3', full_name: 'Rajesh Gupta', email: 'rajesh@simpliwork.com', role: 'MANAGEMENT', active_status: true },
   { user_id: 'u4', full_name: 'Admin User', email: 'admin@simpliwork.com', role: 'ADMIN', active_status: true },
   { user_id: 'u5', full_name: 'Vikram Singh', email: 'vikram@simpliwork.com', role: 'SALES', active_status: true },
+  { user_id: 'u6', full_name: 'Kunal Walia', email: 'kwalia@simpliwork.com', role: 'ADMIN', active_status: true },
 ];
 
 export const MOCK_DEALS: Deal[] = [

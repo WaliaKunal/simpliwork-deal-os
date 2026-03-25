@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -9,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { store } from '@/lib/store';
 import { STAGES, SOURCE_TYPES, ROLES, Building, User, Deal } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import { 
   Upload, 
   CheckCircle, 
@@ -62,18 +62,20 @@ export default function AdminImport() {
           let isRowValid = true;
 
           if (activeTab === 'buildings') {
-            // Mapping: building_code -> building_id, building_name -> name
-            const code = row.building_code || row.building_id;
-            const name = row.building_name || row.name;
+            // Production Mapping: building_code -> building_id, building_name -> name
+            const code = (row.building_code || row.building_id || "").trim();
+            const name = (row.building_name || row.name || "").trim();
             if (!code || !name || !row.city) {
               errors.push({ row: rowNum, msg: "Missing building_code, building_name, or city" });
               isRowValid = false;
             }
           } else if (activeTab === 'users') {
-            // Mapping: Email -> email, Full_name -> full_name, Role -> role, Active_status -> status
+            // Production Mapping: Email -> email, Full_name -> full_name, Role -> role, Active_status -> active_status
             const email = (row.Email || row.email || "").trim().toLowerCase();
             const role = (row.Role || row.role || "").trim().toUpperCase();
-            if (!email || !role || !row.Full_name) {
+            const fullName = row.Full_name || row.full_name;
+
+            if (!email || !role || !fullName) {
               errors.push({ row: rowNum, msg: "Missing Email, Full_name, or Role" });
               isRowValid = false;
             } else if (!ROLES.includes(role as any)) {
@@ -81,7 +83,7 @@ export default function AdminImport() {
               isRowValid = false;
             }
           } else if (activeTab === 'deals') {
-            // Lookup logic: deals.building_code must match buildings.building_id (which is the code)
+            // Exact Building Lookup Logic: deals.building_code must match buildings.building_id (internal code)
             const bCode = (row.building_code || "").trim();
             const sEmail = (row.sales_owner_email || "").trim().toLowerCase();
             
@@ -92,7 +94,7 @@ export default function AdminImport() {
               errors.push({ row: rowNum, msg: `Missing fields: ${missing.join(', ')}` });
               isRowValid = false;
             } else {
-              // Exact Building Lookup Logic
+              // Robust Building Lookup with trimmed matching
               const buildingExists = masterBuildings.some(b => b.building_id.trim() === bCode);
               if (!buildingExists) {
                 errors.push({ row: rowNum, msg: `Lookup Failed: Building Code [${bCode}] not found in master records.` });
@@ -247,7 +249,6 @@ export default function AdminImport() {
         {dryRunResult && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
             
-            {/* Schema Mapping Intel */}
             <Card className="border-none ring-1 ring-slate-200 shadow-sm bg-indigo-50/30">
               <CardHeader className="py-3 border-b border-indigo-100">
                 <CardTitle className="text-[9px] font-black uppercase text-indigo-700 tracking-widest flex items-center gap-2">
@@ -265,8 +266,8 @@ export default function AdminImport() {
                 <div className="mt-4 flex items-start gap-2 p-3 bg-white/60 rounded-lg border border-indigo-100">
                    <Info className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
                    <p className="text-[10px] font-bold text-indigo-900 uppercase tracking-tight">
-                     {activeTab === 'buildings' && "Logic: building_code is used as Internal ID. Trimmed comparison active."}
-                     {activeTab === 'users' && "Logic: Normalizing Email to lowercase and Role to uppercase."}
+                     {activeTab === 'buildings' && "Logic: building_code mapped to ID. building_name mapped to internal name."}
+                     {activeTab === 'users' && "Logic: Normalizing Email to lowercase. Status & Role to uppercase."}
                      {activeTab === 'deals' && "Logic: Linking deals to master buildings via building_code lookup."}
                    </p>
                 </div>
@@ -333,3 +334,5 @@ export default function AdminImport() {
     </div>
   );
 }
+
+import { Badge } from '@/components/ui/badge';

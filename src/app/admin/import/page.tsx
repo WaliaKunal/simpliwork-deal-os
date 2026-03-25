@@ -17,8 +17,10 @@ import {
   Database, 
   Table as TableIcon,
   Info,
-  ArrowRightLeft
+  ArrowRightLeft,
+  PlayCircle
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 type ImportStatus = {
   valid: number;
@@ -31,9 +33,11 @@ type ImportStatus = {
 export default function AdminImport() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'buildings' | 'users' | 'deals'>('buildings');
-  const [dryRunResult, setDryRunResult] = useState<ImportStatus | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
+  const [dryRunResult, setDryRunResult] = useState<ImportStatus | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
   
   const [masterBuildings, setMasterBuildings] = useState<Building[]>([]);
   const [masterUsers, setMasterUsers] = useState<User[]>([]);
@@ -47,12 +51,30 @@ export default function AdminImport() {
     fetchMaster();
   }, [activeTab]);
 
-  const processCSV = (file: File) => {
-    setFileName(file.name);
-    Papa.parse(file, {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log("File Selected:", file.name, "Size:", file.size, "bytes");
+      setSelectedFile(file);
+      setFileName(file.name);
+      setDryRunResult(null); // Reset previous results
+    }
+  };
+
+  const handleDryRun = () => {
+    if (!selectedFile) {
+      toast({ title: "No File", description: "Please select a CSV file first.", variant: "destructive" });
+      return;
+    }
+
+    console.log("Initiating Dry Run for:", selectedFile.name, "Context:", activeTab);
+    setIsParsing(true);
+
+    Papa.parse(selectedFile, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
+        console.log("CSV Parse Complete. Rows detected:", results.data.length);
         const errors: { row: number; msg: string }[] = [];
         const validatedData: any[] = [];
         const headers = results.meta.fields || [];
@@ -62,7 +84,7 @@ export default function AdminImport() {
           let isRowValid = true;
 
           if (activeTab === 'buildings') {
-            // Production Mapping: building_code -> building_id, building_name -> name
+            // Mapping: building_code -> building_id, building_name -> name
             const code = (row.building_code || row.building_id || "").trim();
             const name = (row.building_name || row.name || "").trim();
             if (!code || !name || !row.city) {
@@ -70,7 +92,7 @@ export default function AdminImport() {
               isRowValid = false;
             }
           } else if (activeTab === 'users') {
-            // Production Mapping: Email -> email, Full_name -> full_name, Role -> role, Active_status -> active_status
+            // Mapping: Email -> email, Full_name -> full_name, Role -> role, Active_status -> active_status
             const email = (row.Email || row.email || "").trim().toLowerCase();
             const role = (row.Role || row.role || "").trim().toUpperCase();
             const fullName = row.Full_name || row.full_name;
@@ -83,7 +105,7 @@ export default function AdminImport() {
               isRowValid = false;
             }
           } else if (activeTab === 'deals') {
-            // Exact Building Lookup Logic: deals.building_code must match buildings.building_id (internal code)
+            // Building Lookup: deals.building_code must match masterBuildings.building_id
             const bCode = (row.building_code || "").trim();
             const sEmail = (row.sales_owner_email || "").trim().toLowerCase();
             
@@ -94,7 +116,7 @@ export default function AdminImport() {
               errors.push({ row: rowNum, msg: `Missing fields: ${missing.join(', ')}` });
               isRowValid = false;
             } else {
-              // Robust Building Lookup with trimmed matching
+              // Building Lookup Logic
               const buildingExists = masterBuildings.some(b => b.building_id.trim() === bCode);
               if (!buildingExists) {
                 errors.push({ row: rowNum, msg: `Lookup Failed: Building Code [${bCode}] not found in master records.` });
@@ -117,6 +139,12 @@ export default function AdminImport() {
           if (isRowValid) validatedData.push(row);
         });
 
+        console.log("Validation Intelligence Report:", {
+          validCount: validatedData.length,
+          invalidCount: errors.length,
+          headersDetected: headers
+        });
+
         setDryRunResult({
           valid: validatedData.length,
           invalid: errors.length,
@@ -124,13 +152,14 @@ export default function AdminImport() {
           data: validatedData,
           detectedHeaders: headers
         });
+        setIsParsing(false);
+      },
+      error: (err) => {
+        console.error("PapaParse Failure:", err);
+        toast({ title: "Parse Error", description: err.message, variant: "destructive" });
+        setIsParsing(false);
       }
     });
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processCSV(file);
   };
 
   const commitImport = async () => {
@@ -183,6 +212,7 @@ export default function AdminImport() {
 
       toast({ title: "Transaction Committed", description: `${dryRunResult.valid} records persisted to Cloud Firestore.` });
       setDryRunResult(null);
+      setSelectedFile(null);
       setFileName('');
     } catch (e: any) {
       toast({ title: "Write Failure", description: e.message, variant: "destructive" });
@@ -212,9 +242,9 @@ export default function AdminImport() {
               variant={activeTab === tab ? 'default' : 'outline'}
               className={cn(
                 "font-black h-12 uppercase tracking-widest text-[10px] border-slate-200 transition-all shadow-sm",
-                activeTab === tab ? "bg-slate-900" : "bg-white hover:bg-slate-50"
+                activeTab === tab ? "bg-slate-900 text-white" : "bg-white hover:bg-slate-50 text-slate-600"
               )}
-              onClick={() => { setActiveTab(tab); setDryRunResult(null); setFileName(''); }}
+              onClick={() => { setActiveTab(tab); setDryRunResult(null); setFileName(''); setSelectedFile(null); }}
             >
               {tab}
             </Button>
@@ -227,7 +257,7 @@ export default function AdminImport() {
               <Upload className="w-4 h-4" /> 01. SOURCE FILE INGESTION
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-8 pb-8">
+          <CardContent className="pt-8 pb-8 space-y-6">
             <div className="border-2 border-dashed border-slate-200 rounded-2xl p-12 flex flex-col items-center justify-center bg-slate-50/30 hover:bg-white hover:border-primary transition-all cursor-pointer relative group">
               <input 
                 type="file" 
@@ -239,10 +269,25 @@ export default function AdminImport() {
                 <FileUp className="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors" />
               </div>
               <p className="text-xs font-black text-slate-900 uppercase tracking-widest">
-                {fileName ? fileName : `Ingest ${activeTab}.csv`}
+                {fileName ? fileName : `Select ${activeTab}.csv`}
               </p>
-              <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase tracking-widest">Supports native production headers</p>
+              <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase tracking-widest text-center max-w-[200px]">
+                {fileName ? "Click to change file" : "Supports native production headers"}
+              </p>
             </div>
+
+            {selectedFile && !dryRunResult && (
+              <div className="flex justify-center animate-in fade-in zoom-in-95 duration-300">
+                <Button 
+                  onClick={handleDryRun} 
+                  disabled={isParsing}
+                  className="gap-3 font-black px-12 h-14 bg-primary hover:bg-primary/90 uppercase tracking-[0.2em] text-xs shadow-xl transition-all"
+                >
+                  <PlayCircle className="w-5 h-5" />
+                  {isParsing ? 'ANALYZING CSV...' : 'EXECUTE DRY RUN'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -318,7 +363,7 @@ export default function AdminImport() {
             )}
 
             <div className="flex justify-end gap-4">
-              <Button variant="ghost" onClick={() => setDryRunResult(null)} disabled={isImporting} className="font-black uppercase tracking-widest text-[10px]">Abort Process</Button>
+              <Button variant="ghost" onClick={() => { setDryRunResult(null); setSelectedFile(null); setFileName(''); }} disabled={isImporting} className="font-black uppercase tracking-widest text-[10px]">Abort Process</Button>
               <Button 
                 disabled={dryRunResult.valid === 0 || isImporting} 
                 onClick={commitImport}
@@ -334,5 +379,3 @@ export default function AdminImport() {
     </div>
   );
 }
-
-import { Badge } from '@/components/ui/badge';

@@ -1,10 +1,9 @@
-
 "use client";
 
 import Navbar from '@/components/layout/Navbar';
 import { useAuth } from '@/context/AuthContext';
 import { store } from '@/lib/store';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,13 +13,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Briefcase } from 'lucide-react';
-import { SOURCE_TYPES } from '@/lib/types';
+import { SOURCE_TYPES, Building } from '@/lib/types';
 
 export default function CreateDeal() {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const buildings = store.getBuildings().filter(b => b.active_status);
+  
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [isLoadingBuildings, setIsLoadingBuildings] = useState(true);
 
   const [formData, setFormData] = useState({
     company_name: '',
@@ -31,6 +32,25 @@ export default function CreateDeal() {
     source_organisation: '',
     source_name: '',
   });
+
+  useEffect(() => {
+    const fetchBuildings = async () => {
+      try {
+        const data = await store.getBuildings();
+        if (Array.isArray(data)) {
+          setBuildings(data.filter(b => b.active_status));
+        } else {
+          setBuildings([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch buildings for creation form:", error);
+        setBuildings([]);
+      } finally {
+        setIsLoadingBuildings(false);
+      }
+    };
+    fetchBuildings();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,14 +125,20 @@ export default function CreateDeal() {
                 <Label htmlFor="building" className="text-[10px] font-black uppercase tracking-widest text-slate-500">Target Building *</Label>
                 <Select onValueChange={val => setFormData({...formData, building_id: val})}>
                   <SelectTrigger className="font-semibold">
-                    <SelectValue placeholder="Select asset" />
+                    <SelectValue placeholder={isLoadingBuildings ? "Loading assets..." : "Select asset"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {buildings.map(b => (
-                      <SelectItem key={b.building_id} value={b.building_id}>
-                        {b.building_name} ({b.city})
-                      </SelectItem>
-                    ))}
+                    {buildings.length > 0 ? (
+                      buildings.map(b => (
+                        <SelectItem key={b.building_id} value={b.building_id}>
+                          {b.building_name} ({b.city})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-xs text-muted-foreground text-center">
+                        {isLoadingBuildings ? "Fetching assets..." : "No active buildings found"}
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -181,7 +207,7 @@ export default function CreateDeal() {
 
               <div className="col-span-2 flex justify-end gap-4 pt-6 border-t mt-4">
                 <Button type="button" variant="ghost" onClick={() => router.back()} className="font-bold uppercase tracking-widest text-xs">Cancel</Button>
-                <Button type="submit" className="font-black uppercase tracking-[0.15em] px-10 h-12">Create Intelligence</Button>
+                <Button type="submit" className="font-black uppercase tracking-[0.15em] px-10 h-12" disabled={isLoadingBuildings}>Create Intelligence</Button>
               </div>
             </form>
           </CardContent>

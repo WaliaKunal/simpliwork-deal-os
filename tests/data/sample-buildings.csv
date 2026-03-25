@@ -1,0 +1,5 @@
+
+building_code,building_name,city,cluster,active_status
+TEST_BLR_01,Test Building Alpha,Bangalore,North,true
+TEST_PNE_02,Test Tech Park,Pune,East,active
+TEST_HYD_03,Test Citadel,Hyderabad,West,1

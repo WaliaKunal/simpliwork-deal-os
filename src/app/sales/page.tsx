@@ -11,7 +11,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, ChevronRight, Clock, AlertCircle, Calendar, CheckCircle2, History } from 'lucide-react';
+import { Search, ChevronRight, Clock, AlertCircle, Calendar, CheckCircle2, History, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +49,7 @@ export default function SalesHome() {
   const filteredDeals = useMemo(() => {
     return deals.filter(d => 
       d.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (d.source_organisation?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       d.source_name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [deals, searchTerm]);
@@ -65,53 +66,53 @@ export default function SalesHome() {
     <div className="min-h-screen flex flex-col bg-[#F0F2F5]">
       <Navbar />
       <div className="flex-1 flex items-center justify-center">
-        <p className="font-bold text-slate-400 animate-pulse">Initializing Secure Pipeline...</p>
+        <p className="font-bold text-slate-400 animate-pulse uppercase tracking-[0.2em] text-xs">Initializing Secure Pipeline...</p>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F0F2F5]">
+    <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
       <Navbar />
       <main className="flex-1 p-8 max-w-7xl mx-auto w-full space-y-8">
         <header className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Operational Pipeline</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Enforced stage gates and aging alerts for active accounts.</p>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Operational Pipeline</h1>
+            <p className="text-slate-500 mt-1 text-[10px] font-bold uppercase tracking-[0.2em]">Enforced stage gates and aging alerts for active accounts.</p>
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input 
-              placeholder="Filter by company or source..." 
-              className="pl-9 w-80 bg-white shadow-sm"
+              placeholder="Filter by company, organisation, or contact..." 
+              className="pl-9 w-[350px] bg-white shadow-sm ring-1 ring-slate-200 border-none h-11 text-xs font-semibold"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </header>
 
-        <div className="space-y-10 pb-20">
+        <div className="space-y-12 pb-20">
           {STAGES.map(stage => {
             const stageDeals = groupedDeals[stage];
             if (stageDeals.length === 0 && searchTerm) return null;
             
             return (
-              <section key={stage} className="space-y-3">
+              <section key={stage} className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">{stage}</h2>
-                  <Badge variant="secondary" className="bg-slate-200 text-slate-700 px-2 h-5 text-[10px] font-black">{stageDeals.length}</Badge>
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">{stage}</h2>
+                  <Badge variant="secondary" className="bg-slate-200 text-slate-700 px-3 h-5 text-[9px] font-black border-none">{stageDeals.length}</Badge>
                 </div>
 
                 <Card className="overflow-hidden border-none shadow-sm ring-1 ring-slate-200">
                   <CardContent className="p-0">
                     <Table>
-                      <TableHeader className="bg-slate-50/80">
+                      <TableHeader className="bg-slate-50/50">
                         <TableRow className="hover:bg-transparent">
-                          <TableHead className="w-[280px] py-3 text-[10px] font-black uppercase text-slate-400">Account Details</TableHead>
-                          <TableHead className="py-3 text-[10px] font-black uppercase text-slate-400">Aging</TableHead>
-                          <TableHead className="py-3 text-[10px] font-black uppercase text-slate-400">Layout Status</TableHead>
-                          <TableHead className="py-3 text-[10px] font-black uppercase text-slate-400">Intelligence Signal</TableHead>
-                          <TableHead className="text-right py-3 text-[10px] font-black uppercase text-slate-400 pr-6">Action</TableHead>
+                          <TableHead className="w-[300px] py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Opportunity Intelligence</TableHead>
+                          <TableHead className="py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Provenance</TableHead>
+                          <TableHead className="py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Aging Profile</TableHead>
+                          <TableHead className="py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Layout Status</TableHead>
+                          <TableHead className="text-right py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 pr-8">Action</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -122,63 +123,53 @@ export default function SalesHome() {
                             const building = buildings.find(b => b.building_id === deal.building_id);
                             
                             const isStale = daysSinceActivity > 7;
-                            const isSolutioningBottleneck = deal.stage === 'Solutioning' && !deal.layout_uploaded_date && daysInStage > 10;
-                            const isNegotiationStall = deal.stage === 'Negotiation' && daysInStage > 14;
-                            const hasWarning = isStale || isSolutioningBottleneck || isNegotiationStall;
+                            const hasWarning = isStale || (deal.stage === 'Solutioning' && !deal.layout_uploaded_date && daysInStage > 10);
 
                             return (
-                              <TableRow key={deal.deal_id} className="group hover:bg-slate-50/50 transition-colors">
-                                <TableCell className="py-4">
-                                  <div className="flex flex-col">
-                                    <span className="font-bold text-slate-900 flex items-center gap-2">
+                              <TableRow key={deal.deal_id} className="group hover:bg-slate-50/30 transition-colors">
+                                <TableCell className="py-5">
+                                  <div className="flex flex-col gap-1">
+                                    <span className="font-black text-slate-900 text-sm flex items-center gap-2 uppercase tracking-tight">
                                       {deal.company_name}
-                                      {hasWarning && <AlertCircle className="w-4 h-4 text-amber-500 fill-amber-50" />}
+                                      {hasWarning && <AlertCircle className="w-4 h-4 text-amber-500" />}
                                     </span>
-                                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{building?.building_name} ({building?.city})</span>
+                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{building?.building_name} • {building?.city}</span>
                                   </div>
                                 </TableCell>
-                                <TableCell className="py-4">
+                                <TableCell className="py-5">
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-[10px] font-black text-indigo-700 flex items-center gap-1.5 uppercase tracking-tighter">
+                                      <ExternalLink className="w-3 h-3" /> {deal.source_organisation}
+                                    </div>
+                                    <span className="text-[9px] text-slate-400 font-bold uppercase">{deal.source_name}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="py-5">
                                   <div className={cn(
-                                    "flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full w-fit",
+                                    "flex items-center gap-1.5 text-[10px] font-black px-3 py-1 rounded-full w-fit",
                                     daysInStage > 14 ? "bg-red-50 text-red-700 border border-red-100" : "bg-slate-100 text-slate-600 border border-slate-200"
                                   )}>
                                     <Clock className="w-3.5 h-3.5" />
-                                    {daysInStage}d
+                                    {daysInStage}D IN STAGE
                                   </div>
                                 </TableCell>
-                                <TableCell className="py-4">
+                                <TableCell className="py-5">
                                   {deal.layout_uploaded_date ? (
-                                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 text-[10px] font-black">
+                                    <Badge className="bg-emerald-500 text-white border-none gap-1.5 text-[9px] font-black px-3 h-6 uppercase tracking-widest">
                                       <CheckCircle2 className="w-3 h-3" /> READY
                                     </Badge>
                                   ) : deal.layout_requested_date ? (
-                                    <Badge className="bg-amber-50 text-amber-700 border-amber-200 gap-1 text-[10px] font-black animate-pulse">
+                                    <Badge className="bg-amber-100 text-amber-700 border-none gap-1.5 text-[9px] font-black px-3 h-6 animate-pulse uppercase tracking-widest">
                                       <History className="w-3 h-3" /> PENDING
                                     </Badge>
                                   ) : (
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Unrequested</span>
+                                    <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">Unrequested</span>
                                   )}
                                 </TableCell>
-                                <TableCell className="py-4">
-                                  <div className="flex flex-col gap-1">
-                                    <div className={cn(
-                                      "flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider",
-                                      isStale ? "text-red-600" : "text-slate-400"
-                                    )}>
-                                      <Calendar className="w-3.5 h-3.5" />
-                                      {deal.last_activity_date}
-                                    </div>
-                                    {deal.activity_logs && deal.activity_logs.length > 0 && (
-                                      <span className="text-[11px] text-slate-500 italic truncate max-w-[180px]">
-                                        "{deal.activity_logs[0].note}"
-                                      </span>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-right py-4 pr-6">
+                                <TableCell className="text-right py-5 pr-8">
                                   <Link href={`/deals/${deal.deal_id}`}>
-                                    <Button variant="outline" size="sm" className="h-9 text-xs font-bold border-slate-200 group-hover:border-primary group-hover:bg-primary group-hover:text-white shadow-sm transition-all">
-                                      View Intelligence
+                                    <Button variant="outline" size="sm" className="h-10 text-[10px] font-black uppercase tracking-widest border-slate-200 group-hover:bg-slate-900 group-hover:text-white transition-all shadow-sm">
+                                      Open Intelligence
                                       <ChevronRight className="w-4 h-4 ml-1" />
                                     </Button>
                                   </Link>
@@ -188,8 +179,8 @@ export default function SalesHome() {
                           })
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={5} className="h-16 text-center text-slate-400 italic text-xs">
-                              No deals found in {stage} stage
+                            <TableCell colSpan={5} className="h-20 text-center text-slate-400 font-bold uppercase tracking-widest text-[9px]">
+                              No intelligence found for {stage}
                             </TableCell>
                           </TableRow>
                         )}

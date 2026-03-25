@@ -34,7 +34,8 @@ export const MOCK_DEALS: Deal[] = [
     requirement_summary: '50-seater managed office space for a US-based SaaS company.',
     approx_requirement_size: 5000,
     source_type: 'Broker',
-    source_name: 'CBRE',
+    source_organisation: 'CBRE',
+    source_name: 'Amit Jain',
     created_date: daysAgo(12),
     last_activity_date: daysAgo(2),
     activity_logs: [
@@ -56,7 +57,8 @@ export const MOCK_DEALS: Deal[] = [
     requirement_summary: 'Full floor requirement for engineering team, needs 20 cabins.',
     approx_requirement_size: 15000,
     source_type: 'Direct',
-    source_name: 'Website',
+    source_organisation: 'Simpliwork Website',
+    source_name: 'Self-Serve',
     created_date: daysAgo(25),
     last_activity_date: daysAgo(8),
     activity_logs: [

@@ -44,6 +44,7 @@
         "requirement_summary": { "type": "string" },
         "approx_requirement_size": { "type": "number" },
         "source_type": { "type": "string" },
+        "source_organisation": { "type": "string" },
         "source_name": { "type": "string" },
         "created_date": { "type": "string" },
         "last_activity_date": { "type": "string" },

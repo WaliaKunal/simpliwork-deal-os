@@ -42,6 +42,7 @@ export interface Deal {
   requirement_summary: string;
   approx_requirement_size: number;
   source_type: string;
+  source_organisation: string;
   source_name: string;
   created_date: string;
   last_activity_date: string;

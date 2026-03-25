@@ -4,15 +4,12 @@
 import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import Navbar from '@/components/layout/Navbar';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { store } from '@/lib/store';
 import { STAGES, SOURCE_TYPES, ROLES, Building, User, Deal } from '@/lib/types';
-import { Upload, CheckCircle, AlertTriangle, FileUp, Database } from 'lucide-react';
+import { Upload, CheckCircle, AlertTriangle, FileUp, Database, Table as TableIcon } from 'lucide-react';
 
 type ImportStatus = {
   valid: number;
@@ -65,27 +62,28 @@ export default function AdminImport() {
               errors.push({ row: rowNum, msg: "Missing user_id, email, or role" });
               isRowValid = false;
             } else if (!ROLES.includes(row.role.toUpperCase() as any)) {
-              errors.push({ row: rowNum, msg: `Invalid role: ${row.role}. Must be ${ROLES.join(', ')}` });
+              errors.push({ row: rowNum, msg: `Invalid role: ${row.role}` });
               isRowValid = false;
             }
           } else if (activeTab === 'deals') {
-            if (!row.company_name || !row.building_id || !row.sales_owner_email || !row.stage) {
-              errors.push({ row: rowNum, msg: "Missing mandatory deal fields" });
+            // company_name,building_code,sales_owner_email,stage,approx_requirement_size,source_type,source_organisation,source_name,created_date,last_activity_date,lost_reason
+            const mandatory = ['company_name', 'building_code', 'sales_owner_email', 'stage', 'source_type', 'source_organisation', 'source_name'];
+            const missing = mandatory.filter(field => !row[field]);
+            
+            if (missing.length > 0) {
+              errors.push({ row: rowNum, msg: `Missing fields: ${missing.join(', ')}` });
               isRowValid = false;
-            } else if (!masterBuildings.find(b => b.building_id === row.building_id)) {
-              errors.push({ row: rowNum, msg: `Building ID ${row.building_id} not found` });
+            } else if (!masterBuildings.find(b => b.building_id === row.building_code)) {
+              errors.push({ row: rowNum, msg: `Building Code ${row.building_code} not found in masters` });
               isRowValid = false;
             } else if (!masterUsers.find(u => u.email === row.sales_owner_email)) {
-              errors.push({ row: rowNum, msg: `Sales Owner Email ${row.sales_owner_email} not found` });
+              errors.push({ row: rowNum, msg: `Sales Owner ${row.sales_owner_email} not found` });
               isRowValid = false;
             } else if (!STAGES.includes(row.stage as any)) {
               errors.push({ row: rowNum, msg: `Invalid stage: ${row.stage}` });
               isRowValid = false;
-            } else if (row.source_type && !SOURCE_TYPES.includes(row.source_type)) {
+            } else if (!SOURCE_TYPES.includes(row.source_type)) {
               errors.push({ row: rowNum, msg: `Invalid source_type: ${row.source_type}` });
-              isRowValid = false;
-            } else if (row.created_date && !validateDate(row.created_date)) {
-              errors.push({ row: rowNum, msg: "created_date must be YYYY-MM-DD" });
               isRowValid = false;
             }
           }
@@ -133,28 +131,30 @@ export default function AdminImport() {
         await store.setUsers(data);
       } else if (activeTab === 'deals') {
         const data = dryRunResult.data.map(r => ({
-          deal_id: r.deal_id || `d_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          deal_id: `d_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
           company_name: r.company_name,
-          building_id: r.building_id,
+          building_id: r.building_code,
           sales_owner_email: r.sales_owner_email,
           stage: r.stage,
-          stage_updated_date: r.stage_updated_date || new Date().toISOString().split('T')[0],
-          requirement_summary: r.requirement_summary || '',
+          source_type: r.source_type,
+          source_organisation: r.source_organisation,
+          source_name: r.source_name,
           approx_requirement_size: Number(r.approx_requirement_size) || 0,
-          source_type: r.source_type || 'Other',
-          source_name: r.source_name || 'Imported',
           created_date: r.created_date || new Date().toISOString().split('T')[0],
           last_activity_date: r.last_activity_date || new Date().toISOString().split('T')[0],
+          lost_reason: r.lost_reason || '',
+          stage_updated_date: new Date().toISOString().split('T')[0],
+          requirement_summary: 'Imported Opportunity',
           activity_logs: [],
           layout_revision_count: 0,
-          budget_clarity: r.budget_clarity === 'true',
-          timeline_clarity: r.timeline_clarity === 'true',
-          decision_maker_identified: r.decision_maker_identified === 'true'
+          budget_clarity: false,
+          timeline_clarity: false,
+          decision_maker_identified: false
         } as Deal));
         await store.setDeals(data);
       }
 
-      toast({ title: "Import Successful", description: `${dryRunResult.valid} records persisted to Firestore.` });
+      toast({ title: "Import Successful", description: `${dryRunResult.valid} records persisted.` });
       setDryRunResult(null);
       setFileName('');
     } catch (e: any) {
@@ -170,8 +170,8 @@ export default function AdminImport() {
       <main className="flex-1 p-8 max-w-5xl mx-auto w-full space-y-8">
         <header className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">DATA MIGRATION UTILITY</h1>
-            <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest mt-1">Admin Console & bull; Bulk Import Engine</p>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Bulk Import Utility</h1>
+            <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-[0.2em] mt-1">Admin Console & bull; Enterprise Data Migration</p>
           </div>
           <Database className="w-8 h-8 text-primary opacity-20" />
         </header>
@@ -181,7 +181,7 @@ export default function AdminImport() {
             <Button 
               key={tab}
               variant={activeTab === tab ? 'default' : 'outline'}
-              className="font-bold h-12 uppercase tracking-widest text-xs"
+              className="font-black h-12 uppercase tracking-widest text-[10px] border-slate-200"
               onClick={() => { setActiveTab(tab); setDryRunResult(null); setFileName(''); }}
             >
               {tab}
@@ -190,60 +190,82 @@ export default function AdminImport() {
         </div>
 
         <Card className="border-none shadow-sm ring-1 ring-slate-200">
-          <CardHeader>
-            <CardTitle className="text-sm font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+          <CardHeader className="bg-slate-50/50 border-b">
+            <CardTitle className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
               <Upload className="w-4 h-4" /> 1. Upload {activeTab.slice(0, -1)} CSV
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="border-2 border-dashed border-slate-200 rounded-xl p-12 flex flex-col items-center justify-center bg-slate-50 hover:bg-white hover:border-primary transition-all cursor-pointer relative">
+          <CardContent className="pt-6 space-y-4">
+            <div className="border-2 border-dashed border-slate-200 rounded-xl p-12 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-white hover:border-primary transition-all cursor-pointer relative group">
               <input 
                 type="file" 
                 accept=".csv" 
                 onChange={handleFileUpload}
                 className="absolute inset-0 opacity-0 cursor-pointer"
               />
-              <FileUp className="w-10 h-10 text-slate-400 mb-4" />
-              <p className="text-sm font-bold text-slate-600">
-                {fileName ? `File: ${fileName}` : `Drag and drop your ${activeTab}.csv here`}
+              <FileUp className="w-10 h-10 text-slate-300 mb-4 group-hover:text-primary transition-colors" />
+              <p className="text-xs font-black text-slate-600 uppercase tracking-widest">
+                {fileName ? `File Selected: ${fileName}` : `Drop ${activeTab}.csv here`}
               </p>
-              <p className="text-[10px] uppercase font-bold text-slate-400 mt-2">Maximum file size: 5MB</p>
+              {activeTab === 'deals' && (
+                <p className="text-[8px] font-bold text-slate-400 mt-4 uppercase tracking-widest text-center max-w-xs">
+                  Required: company_name, building_code, sales_owner_email, stage, size, type, org, name...
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {dryRunResult && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
             <div className="grid grid-cols-2 gap-4">
-              <Card className="bg-emerald-50 border-emerald-200">
+              <Card className="bg-emerald-50 border-none ring-1 ring-emerald-100">
                 <CardContent className="pt-6 flex items-center gap-4">
                   <CheckCircle className="w-8 h-8 text-emerald-600" />
                   <div>
-                    <p className="text-[10px] font-black uppercase text-emerald-800 tracking-widest">Valid Rows</p>
-                    <p className="text-3xl font-black text-emerald-900">{dryRunResult.valid}</p>
+                    <p className="text-[9px] font-black uppercase text-emerald-800 tracking-widest">Valid Records</p>
+                    <p className="text-3xl font-black text-emerald-900 leading-none mt-1">{dryRunResult.valid}</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-red-50 border-red-200">
+              <Card className="bg-red-50 border-none ring-1 ring-red-100">
                 <CardContent className="pt-6 flex items-center gap-4">
                   <AlertTriangle className="w-8 h-8 text-red-600" />
                   <div>
-                    <p className="text-[10px] font-black uppercase text-red-800 tracking-widest">Failed Rows</p>
-                    <p className="text-3xl font-black text-red-900">{dryRunResult.invalid}</p>
+                    <p className="text-[9px] font-black uppercase text-red-800 tracking-widest">Invalid Rows</p>
+                    <p className="text-3xl font-black text-red-900 leading-none mt-1">{dryRunResult.invalid}</p>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
+            {dryRunResult.errors.length > 0 && (
+              <Card className="border-none ring-1 ring-red-100 shadow-sm overflow-hidden">
+                <CardHeader className="bg-red-50 border-b">
+                  <CardTitle className="text-[9px] font-black uppercase text-red-800 tracking-widest flex items-center gap-2">
+                    <AlertTriangle className="w-3 h-3" /> Error Validation Report
+                  </CardTitle>
+                </CardHeader>
+                <div className="max-h-[300px] overflow-y-auto divide-y text-xs">
+                  {dryRunResult.errors.map((err, i) => (
+                    <div key={i} className="p-3 flex gap-4 hover:bg-red-50/20">
+                      <span className="font-black text-red-600 w-12 shrink-0">Row {err.row}</span>
+                      <span className="text-slate-600 font-medium">{err.msg}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
             <div className="flex justify-end gap-4">
-              <Button variant="outline" onClick={() => setDryRunResult(null)} disabled={isImporting}>Cancel</Button>
+              <Button variant="ghost" onClick={() => setDryRunResult(null)} disabled={isImporting} className="font-black uppercase tracking-widest text-[10px]">Cancel</Button>
               <Button 
                 disabled={dryRunResult.valid === 0 || isImporting} 
                 onClick={commitImport}
-                className="gap-2 font-bold px-8 h-12 bg-primary hover:bg-primary/90"
+                className="gap-2 font-black px-10 h-12 bg-slate-900 hover:bg-black uppercase tracking-widest text-xs"
               >
                 <Database className="w-4 h-4" />
-                {isImporting ? 'Processing...' : `Commit ${dryRunResult.valid} Records`}
+                {isImporting ? 'Processing Transaction...' : `Commit ${dryRunResult.valid} Records`}
               </Button>
             </div>
           </div>

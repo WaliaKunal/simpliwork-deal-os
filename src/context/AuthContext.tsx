@@ -2,14 +2,14 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as AppUser } from '@/lib/types';
-import { MOCK_USERS } from '@/lib/mock-data';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
   GoogleAuthProvider, 
   signOut
 } from 'firebase/auth';
-import { auth } from '@/firebase';
+import { auth, db } from '@/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
@@ -21,16 +21,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function normalize(email?: string) {
+  return email?.trim().toLowerCase();
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        if (!firebaseUser.email?.endsWith('@simpliwork.com')) {
-          signOut(auth);
+        const email = normalize(firebaseUser.email);
+
+        if (!email?.endsWith('@simpliwork.com')) {
+          await signOut(auth);
           setUser(null);
           toast({
             title: "Access Denied",
@@ -38,14 +44,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             variant: "destructive"
           });
         } else {
-          const foundUser = MOCK_USERS.find(u => u.email === firebaseUser.email);
-          if (foundUser) {
+          // 🔑 REAL FIX — Firestore lookup
+          const snap = await getDocs(collection(db, "users"));
+          const users = snap.docs.map(d => d.data());
+
+          const matchedUser = users.find(
+            (u: any) => normalize(u.email) === email
+          );
+
+          if (matchedUser) {
             setUser({
-              ...foundUser,
-              full_name: firebaseUser.displayName || foundUser.full_name,
+              ...matchedUser,
+              full_name: firebaseUser.displayName || matchedUser.full_name,
             });
           } else {
-            signOut(auth);
+            await signOut(auth);
             setUser(null);
             toast({
               title: "Unauthorized",
@@ -70,15 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      console.error("Login Failure - Details:", {
-        code: error.code,
-        message: error.message,
-        customData: error.customData
-      });
-      
+      console.error("Login Failure:", error);
       toast({
         title: "Sign-In Failed",
-        description: `Firebase Error: ${error.code || 'unknown'}. Please check console for details.`,
+        description: `Firebase Error: ${error.code || 'unknown'}`,
         variant: "destructive"
       });
     }
@@ -101,8 +109,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }

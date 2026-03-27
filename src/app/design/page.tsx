@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Deal } from "@/lib/types";
 import { store } from "@/lib/store";
@@ -39,11 +40,15 @@ export default function DesignPage() {
       ) : (
         <div className="space-y-3">
           {deals.map((deal: any) => (
-            <div key={deal.deal_id || deal.id || deal.company_name} className="border rounded p-4">
+            <Link
+              key={deal.deal_id || deal.id || deal.company_name}
+              href={`/deals/${deal.deal_id || deal.id}`}
+              className="block border rounded p-4 hover:bg-gray-50"
+            >
               <div className="font-semibold">{deal.company_name}</div>
               <div className="text-sm text-gray-600">{deal.building_code || deal.building_id || ""}</div>
               <div className="text-sm">Stage: {deal.stage}</div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

@@ -11,6 +11,7 @@ import {
 import { auth, db } from '@/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: AppUser | null;
@@ -29,22 +30,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+
       if (firebaseUser) {
         const email = normalize(firebaseUser.email);
 
         if (!email?.endsWith('@simpliwork.com')) {
           await signOut(auth);
           setUser(null);
-          toast({
-            title: "Access Denied",
-            description: "Only @simpliwork.com accounts are authorized.",
-            variant: "destructive"
-          });
         } else {
-          // 🔑 REAL FIX — Firestore lookup
           const snap = await getDocs(collection(db, "users"));
           const users = snap.docs.map(d => d.data());
 
@@ -60,21 +57,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             await signOut(auth);
             setUser(null);
-            toast({
-              title: "Unauthorized",
-              description: "Email authorized but user not found in internal directory.",
-              variant: "destructive"
-            });
           }
         }
       } else {
         setUser(null);
+        router.push("/"); // 🔥 KEY FIX
       }
+
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [router]);
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -84,20 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await signInWithPopup(auth, provider);
     } catch (error: any) {
       console.error("Login Failure:", error);
-      toast({
-        title: "Sign-In Failed",
-        description: `Firebase Error: ${error.code || 'unknown'}`,
-        variant: "destructive"
-      });
     }
   };
 
   const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
+    await signOut(auth);
+    setUser(null);
+    router.push("/"); // 🔥 HARD REDIRECT
   };
 
   return (

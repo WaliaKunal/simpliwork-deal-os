@@ -1,61 +1,99 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Navbar from "@/components/layout/Navbar";
 import { store } from "@/lib/store";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Clock, CheckCircle2 } from "lucide-react";
 
 export default function DesignPage() {
   const [deals, setDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadDeals() {
-      try {
-        const allDeals = await store.getDeals();
+    async function load() {
+      const allDeals = await store.getDeals();
 
-        const approvedDeals = Array.isArray(allDeals)
-          ? allDeals.filter(d => d.layout_request_status === "Approved")
-          : [];
+      const approved = Array.isArray(allDeals)
+        ? allDeals.filter(d => d.layout_request_status === "Approved")
+        : [];
 
-        setDeals(approvedDeals);
-      } catch (err) {
-        console.error(err);
-        setDeals([]);
-      } finally {
-        setLoading(false);
-      }
+      setDeals(approved);
+      setLoading(false);
     }
 
-    loadDeals();
+    load();
   }, []);
 
-  if (loading) {
-    return <div className="p-6">Loading design queue...</div>;
-  }
+  const stats = useMemo(() => {
+    return {
+      total: deals.length,
+      pendingUpload: deals.filter(d => !d.layout_file_upload).length,
+      completed: deals.filter(d => d.layout_file_upload).length
+    };
+  }, [deals]);
+
+  if (loading) return <div className="p-6">Loading design queue...</div>;
 
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Design Queue</h1>
+    <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
+      <Navbar />
 
-      {deals.length === 0 ? (
-        <p>No approved layout requests.</p>
-      ) : (
+      <main className="flex-1 p-8 max-w-6xl mx-auto w-full space-y-6">
+
+        {/* HEADER */}
+        <div>
+          <h1 className="text-2xl font-bold">Design Queue</h1>
+          <p className="text-sm text-gray-500">
+            Approved layout requests ready for execution
+          </p>
+        </div>
+
+        {/* STATS */}
+        <div className="grid grid-cols-3 gap-4">
+          <Card><CardContent className="p-4">Total: {stats.total}</CardContent></Card>
+          <Card><CardContent className="p-4">Pending: {stats.pendingUpload}</CardContent></Card>
+          <Card><CardContent className="p-4">Completed: {stats.completed}</CardContent></Card>
+        </div>
+
+        {/* QUEUE */}
         <div className="space-y-3">
           {deals.map((deal) => (
-            <Link
-              key={deal.deal_id}
-              href={`/deals/${deal.deal_id}`}
-              className="block border rounded p-4 hover:bg-gray-50"
-            >
-              <div className="font-semibold">{deal.company_name}</div>
-              <div className="text-sm">Stage: {deal.stage}</div>
-              <div className="text-xs text-green-600 font-bold">
-                Approved for Design
-              </div>
-            </Link>
+            <Card key={deal.deal_id}>
+              <CardHeader>
+                <CardTitle className="text-sm flex justify-between">
+                  {deal.company_name}
+
+                  {deal.layout_file_upload ? (
+                    <Badge className="bg-green-100 text-green-700">
+                      Completed
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-yellow-100 text-yellow-700">
+                      Pending
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent className="flex justify-between items-center">
+                <div className="text-xs text-gray-500">
+                  {deal.building_id}
+                </div>
+
+                <Link href={`/deals/${deal.deal_id}`}>
+                  <button className="px-3 py-1 border rounded text-sm">
+                    Open
+                  </button>
+                </Link>
+              </CardContent>
+            </Card>
           ))}
         </div>
-      )}
-    </main>
+
+      </main>
+    </div>
   );
 }

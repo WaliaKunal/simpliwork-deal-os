@@ -1,15 +1,11 @@
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/firebase";
+import { store } from "./store";
 
 export async function requestLayout(dealId: string) {
   const today = new Date().toISOString().split("T")[0];
 
-  const ref = doc(db, "deals", dealId);
-
-  await updateDoc(ref, {
-    layout_requested: true,
-    layout_request_date: today,
-    layout_request_status: "Pending Approval",
-    last_activity_date: today
+  await store.updateDeal(dealId, {
+    stage: "Solutioning",
+    layout_request_status: "Pending",
+    layout_requested_date: today
   });
 }

@@ -1,4 +1,3 @@
-
 export type UserRole = 'SALES' | 'DESIGN' | 'MANAGEMENT' | 'ADMIN';
 
 export type DealStage = 
@@ -9,6 +8,14 @@ export type DealStage =
   | 'LoI Initiated' 
   | 'LoI Signed' 
   | 'Lost';
+
+export type LayoutRequestStatus =
+  | 'Not Requested'
+  | 'Pending Approval'
+  | 'Approved'
+  | 'Rejected'
+  | 'In Progress'
+  | 'Submitted';
 
 export interface ActivityLog {
   user_email: string;
@@ -50,11 +57,21 @@ export interface Deal {
   budget_clarity: boolean;
   timeline_clarity: boolean;
   decision_maker_identified: boolean;
-  layout_requested_date?: string;
+
+  layout_requested?: boolean;
+  layout_request_date?: string;
+  layout_request_status?: LayoutRequestStatus;
+  layout_approved?: boolean;
+  layout_approved_by?: string;
+  layout_approved_date?: string;
+  layout_rejection_note?: string;
+  layout_started_by?: string;
+  layout_started_date?: string;
   layout_uploaded_date?: string;
+  layout_file_upload?: string;
   layout_revision_count: number;
   design_note?: string;
-  layout_file_upload?: string;
+
   loi_initiated_date?: string;
   loi_signed_date?: string;
   lost_reason?: string;
@@ -68,6 +85,15 @@ export const STAGES: DealStage[] = [
   'LoI Initiated',
   'LoI Signed',
   'Lost'
+];
+
+export const LAYOUT_REQUEST_STATUSES: LayoutRequestStatus[] = [
+  'Not Requested',
+  'Pending Approval',
+  'Approved',
+  'Rejected',
+  'In Progress',
+  'Submitted'
 ];
 
 export const SOURCE_TYPES = [

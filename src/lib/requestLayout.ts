@@ -8,8 +8,8 @@ export async function requestLayout(dealId: string) {
 
   await updateDoc(ref, {
     layout_requested: true,
-    layout_requested_date: today,
-    stage: "Solutioning",
+    layout_request_date: today,
+    layout_request_status: "Pending Approval",
     last_activity_date: today
   });
 }

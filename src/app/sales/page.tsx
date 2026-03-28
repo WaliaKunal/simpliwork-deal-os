@@ -7,19 +7,11 @@ import { requestLayout } from "@/lib/requestLayout";
 
 export default function SalesPage() {
   const [deals, setDeals] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      try {
-        const d = await store.getDeals();
-        setDeals(Array.isArray(d) ? d : []);
-      } catch (e) {
-        console.error(e);
-        setDeals([]);
-      } finally {
-        setLoading(false);
-      }
+      const d = await store.getDeals();
+      setDeals(Array.isArray(d) ? d : []);
     }
     load();
   }, []);
@@ -30,40 +22,34 @@ export default function SalesPage() {
     window.location.reload();
   }
 
-  if (loading) return <div className="p-6">Loading...</div>;
-
   return (
     <main className="p-6 space-y-4">
       <h1 className="text-2xl font-bold">My Deals</h1>
 
-      {deals.length === 0 ? (
-        <p>No deals found.</p>
-      ) : (
-        deals.map((deal: any) => (
-          <div key={deal.deal_id} className="border p-4 rounded space-y-2">
-            <div className="font-semibold">{deal.company_name}</div>
-            <div className="text-sm">Stage: {deal.stage}</div>
+      {deals.map((deal: any) => (
+        <div key={deal.deal_id} className="border p-4 rounded space-y-2">
+          <div className="font-semibold">{deal.company_name}</div>
+          <div className="text-sm">Stage: {deal.stage}</div>
 
-            <div className="flex gap-2">
-              <Link
-                href={`/deals/${deal.deal_id}`}
-                className="px-3 py-1 border rounded text-sm"
+          <div className="flex gap-2">
+            <Link
+              href={`/deals/${deal.deal_id}`}
+              className="px-3 py-1 border rounded text-sm"
+            >
+              View
+            </Link>
+
+            {!deal.layout_requested && deal.stage !== "Solutioning" && (
+              <button
+                onClick={() => handleRequestLayout(deal.deal_id)}
+                className="px-3 py-1 bg-black text-white rounded text-sm"
               >
-                View
-              </Link>
-
-              {!deal.layout_requested && (
-                <button
-                  onClick={() => handleRequestLayout(deal.deal_id)}
-                  className="px-3 py-1 bg-black text-white rounded text-sm"
-                >
-                  Request Layout
-                </button>
-              )}
-            </div>
+                Request Layout
+              </button>
+            )}
           </div>
-        ))
-      )}
+        </div>
+      ))}
     </main>
   );
 }

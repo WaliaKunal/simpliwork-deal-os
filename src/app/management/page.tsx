@@ -2,155 +2,160 @@
 
 import Navbar from '@/components/layout/Navbar';
 import { store } from '@/lib/store';
-import { Deal, Building } from '@/lib/types';
 import { useState, useEffect, useMemo } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import {
-  TrendingUp,
-  ShieldAlert,
-  Zap,
-  Layers,
-  PieChart,
-  ExternalLink,
-  Building2,
-  Activity
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function ManagementDashboard() {
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [deals, setDeals] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const [d, b] = await Promise.all([store.getDeals(), store.getBuildings()]);
-      setDeals(d);
-      setBuildings(b);
-    };
-    fetchData();
+    async function load() {
+      const d = await store.getDeals();
+      setDeals(Array.isArray(d) ? d : []);
+    }
+    load();
   }, []);
 
-  const calculateDays = (dateStr: string) => {
-    if (!dateStr) return 0;
-    const start = new Date(dateStr);
-    const today = new Date();
-    return Math.ceil(Math.abs(today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-  };
+  // KPI CALCULATIONS
+  const stats = useMemo(() => {
+    const total = deals.length;
 
-  const winRateStats = useMemo(() => {
-    const recentDeals = deals;
-    const won = recentDeals.filter(d => d.stage === 'LoI Signed');
-    const total = recentDeals.length;
-    return {
-      rate: total > 0 ? Math.round((won.length / total) * 100) : 0,
-      won: won.length,
-      total
-    };
-  }, [deals]);
+    const won = deals.filter(d => d.stage === "LoI Signed").length;
+    const active = deals.filter(d => d.stage !== "Lost" && d.stage !== "LoI Signed");
 
-  const qualityStats = useMemo(() => {
-    const activeDeals = deals.filter(d => d.stage !== 'Lost' && d.stage !== 'LoI Signed');
-    if (activeDeals.length === 0) return { highQuality: 0 };
+    const winRate = total > 0 ? Math.round((won / total) * 100) : 0;
 
-    const highQualityCount = activeDeals.filter(d =>
+    const highQuality = active.filter(d =>
       d.budget_clarity && d.timeline_clarity && d.decision_maker_identified
     ).length;
 
+    const quality = active.length > 0 ? Math.round((highQuality / active.length) * 100) : 0;
+
+    const forecast = active
+      .filter(d => d.stage === "Negotiation" || d.stage === "LoI Initiated")
+      .reduce((sum, d) => sum + (d.approx_requirement_size || 0), 0);
+
     return {
-      highQuality: Math.round((highQualityCount / activeDeals.length) * 100)
+      winRate,
+      quality,
+      forecast,
+      risks: active.length - highQuality
     };
   }, [deals]);
 
-  const prioritizedRisks = useMemo(() => {
-    return deals
-      .filter(d => d.stage !== 'Lost' && d.stage !== 'LoI Signed')
-      .map(d => ({ ...d, idleDays: calculateDays(d.last_activity_date) }))
-      .sort((a, b) => b.idleDays - a.idleDays)
-      .slice(0, 5);
-  }, [deals]);
+  // APPROVALS
+  const pendingApprovals = deals.filter(
+    d => d.layout_request_status === "Pending"
+  );
+
+  async function approve(id: string) {
+    await store.updateDeal(id, { layout_request_status: "Approved" });
+    window.location.reload();
+  }
+
+  async function reject(id: string) {
+    await store.updateDeal(id, { layout_request_status: "Rejected" });
+    window.location.reload();
+  }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC]">
       <Navbar />
 
-      <main className="flex-1 p-8 max-w-7xl mx-auto w-full space-y-8 pb-20">
+      <main className="p-8 max-w-7xl mx-auto space-y-8">
 
         {/* HEADER */}
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-              STRATEGIC COMMAND CENTRE
-            </h1>
-            <p className="text-slate-500 mt-1 font-bold flex items-center gap-2 uppercase tracking-widest text-[10px]">
-              <Zap className="w-3 h-3 text-primary fill-primary" />
-              Multi-Asset Intelligence & Source ROI
-            </p>
-          </div>
-
-          <div className="flex gap-3 items-center">
-
-            {/* 🔴 NEW BUTTON (THIS WAS MISSING) */}
-            <button
-              onClick={() => window.location.href = "/management/approvals"}
-              className="px-4 py-2 border rounded text-sm font-bold"
-            >
-              Approvals
-            </button>
-
-            <Badge className="bg-emerald-50 text-emerald-700 font-black px-4 h-9">
-              WIN RATE: {winRateStats.rate}%
-            </Badge>
-
-            <Badge className="bg-indigo-50 text-indigo-700 font-black px-4 h-9">
-              QUALITY: {qualityStats.highQuality}%
-            </Badge>
-          </div>
-        </header>
-
-        {/* KPI */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <KPI icon={TrendingUp} label="Win Rate" value={`${winRateStats.rate}%`} />
-          <KPI icon={Layers} label="Pipeline Quality" value={`${qualityStats.highQuality}%`} />
-          <KPI icon={ShieldAlert} label="Risks" value={`${prioritizedRisks.length}`} />
+        <div>
+          <h1 className="text-3xl font-bold">Command Centre</h1>
+          <p className="text-gray-500 text-sm">
+            Strategic pipeline and decision intelligence
+          </p>
         </div>
 
-        {/* RISKS */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Risks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {prioritizedRisks.map(r => (
-              <div key={r.deal_id} className="p-3 border-b">
-                <div className="font-bold">{r.company_name}</div>
-                <div className="text-xs text-gray-500">
-                  {r.stage} • {r.sales_owner_email}
+        {/* KPI STRIP */}
+        <div className="grid grid-cols-4 gap-4">
+
+          <Card><CardContent className="p-4">
+            <div className="text-xs text-gray-500">Win Rate</div>
+            <div className="text-xl font-bold">{stats.winRate}%</div>
+          </CardContent></Card>
+
+          <Card><CardContent className="p-4">
+            <div className="text-xs text-gray-500">Pipeline Quality</div>
+            <div className="text-xl font-bold">{stats.quality}%</div>
+          </CardContent></Card>
+
+          <Card><CardContent className="p-4">
+            <div className="text-xs text-gray-500">30D Forecast (SQFT)</div>
+            <div className="text-xl font-bold">{Math.round(stats.forecast / 1000)}k</div>
+          </CardContent></Card>
+
+          <Card><CardContent className="p-4">
+            <div className="text-xs text-gray-500">Risk Deals</div>
+            <div className="text-xl font-bold">{stats.risks}</div>
+          </CardContent></Card>
+
+        </div>
+
+        {/* APPROVAL PANEL */}
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Pending Layout Approvals</h2>
+
+          {pendingApprovals.length === 0 ? (
+            <div className="text-sm text-gray-500">No pending approvals</div>
+          ) : (
+            <div className="space-y-3">
+              {pendingApprovals.map(deal => (
+                <div key={deal.deal_id} className="bg-white border p-4 rounded flex justify-between items-center">
+
+                  <div>
+                    <div className="font-semibold">{deal.company_name}</div>
+                    <div className="text-sm text-gray-500">{deal.stage}</div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => approve(deal.deal_id)}
+                      className="px-3 py-1 bg-green-600 text-white rounded text-sm"
+                    >
+                      Approve
+                    </button>
+
+                    <button
+                      onClick={() => reject(deal.deal_id)}
+                      className="px-3 py-1 bg-red-600 text-white rounded text-sm"
+                    >
+                      Reject
+                    </button>
+                  </div>
+
                 </div>
-                <div className="text-xs text-red-500">
-                  Idle: {r.idleDays} days
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* PIPELINE VIEW */}
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Pipeline Overview</h2>
+
+          <div className="grid grid-cols-3 gap-4">
+            {["Qualified","Solutioning","Proposal Sent","Negotiation","LoI Initiated","LoI Signed","Lost"].map(stage => {
+              const count = deals.filter(d => d.stage === stage).length;
+
+              return (
+                <Card key={stage}>
+                  <CardContent className="p-4">
+                    <div className="text-xs text-gray-500">{stage}</div>
+                    <div className="text-xl font-bold">{count}</div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
 
       </main>
     </div>
-  );
-}
-
-function KPI({ icon: Icon, label, value }: any) {
-  return (
-    <Card>
-      <CardContent className="pt-6 flex items-center gap-4">
-        <Icon className="w-6 h-6" />
-        <div>
-          <p className="text-xs">{label}</p>
-          <div className="text-xl font-bold">{value}</div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
